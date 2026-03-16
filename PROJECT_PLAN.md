@@ -107,6 +107,8 @@ Maintains the global mission queue and schedules missions for execution through 
 **Autonomous Feedback Loop**
 Validates mission results and updates the Project State Graph, triggering the next cycle of improvement missions to enable continuous, self-driven evolution.
 
+All generated missions must pass validation through the Governance Enforcement Interface before execution.
+
 ---
 
 
@@ -163,6 +165,35 @@ The runtime environment responsible for the parallel execution, monitoring, and 
 - **Agent Failure Supervisor**: Monitors worker health, detects stuck reasoning loops, and orchestrates task-level recovery.
 - **Observability Pipeline**: Captures telemetry (agent_id, tool_calls, execution traces, duration) and feeds signals into debugging, performance analysis, and the Autonomous Planning Loop.
 
+#### Tool Execution Layer
+
+The Tool Execution Layer provides a controlled interface for agents to interact with external systems and development tools.
+
+Capabilities include:
+
+- File system operations
+- Terminal command execution
+- Code execution environments
+- Browser automation
+- API integrations
+- Package management operations
+
+All tool calls pass through the Tool Authority Gateway and sandboxing systems to enforce governance policies and prevent unsafe actions.
+
+#### Resource Scheduling Layer
+
+The Resource Scheduling Layer manages computational resources across all running agents and tasks.
+
+Responsibilities include:
+
+- Agent concurrency control
+- Model routing across AI providers
+- GPU/CPU allocation
+- Task prioritization under load
+- Cost-aware execution strategies
+
+This ensures stable operation when large numbers of agents run simultaneously.
+
 - **Internal Mechanisms**:
   - **Parallelism Engine**: Worker pool management and dynamic task coordination.
   - **Context Isolation**: Minimal-context provisioning for workers to maximize speed and minimize hallucination.
@@ -171,8 +202,6 @@ The runtime environment responsible for the parallel execution, monitoring, and 
 ### 5. Code Intelligence & Optimization Layer
 
 Advanced reasoning over the entire codebase to ensure safe growth:
-
-- **Change Simulation Engine**: Virtual runtime simulator that allows the AI to predict the impact of code changes before applying them, reducing the risk of breaking large codebases during refactoring.
 
 - **Global Knowledge Graph View (Generated from the Project State Graph)**: A structural mapping of Components → APIs → Data Models → Services → Routes integrated into the Project State Graph world model.
 - **Code Indexer & Semantic Search**: Parses source files and continuously synchronizes symbols, APIs, and dependencies with the Project State Graph.
@@ -201,6 +230,20 @@ To ensure safe edits across 1000+ file projects, AstraBuild utilizes a structure
   - **Comprehension Engine**: Function purpose inference, algorithm detection, and code-intent extraction.
 - **Code Ownership Graph**: Real-time attribution mapping that links every symbol and line to its originating agent and mission ID.
 - **Algorithm Pattern Detection**: Structural recognition of established algorithmic patterns (e.g., Minimax, Dijkstra, Transformers) for high-fidelity reasoning.
+
+### 5.2 Change Simulation Layer
+
+Virtual runtime simulator that allows the AI to predict the impact of code changes before applying them, reducing the risk of breaking large codebases during refactoring.
+
+Key capabilities:
+- Static code analysis of proposed changes
+- Runtime simulation of code paths
+- Impact analysis on dependencies
+- Performance regression prediction
+- Security vulnerability detection
+- Rollback plan generation
+
+This layer sits between code mutation and verification to catch issues early in the development process.
 
 ### 6. AI Quality Engineering & Production Self-Healing
 
@@ -253,9 +296,13 @@ Ensures long-term context, consistency, and absolute system optimization:
 - **Semantic Knowledge Base**: An internal library of secure patterns, best practices, and performance standards.
 - **Meta-Learning Engine**: Analyzes patterns across multiple projects to improve code generation quality and pre-emptively apply safeguards.
 
+#### Cross-Project Knowledge Graph
+
+AstraBuild maintains a cross-project knowledge graph containing reusable architecture patterns, bug-resolution strategies, dependency compatibility data, and performance optimization knowledge. This enables the system to transfer learning across projects and accelerate future development cycles.
+
 - **Internal Mechanisms**:
   - **Agent Memory Isolation**: Enforces communication via the Global Knowledge Graph and Decision Logs, preventing direct memory sharing and reasoning corruption between agents.
-  - **Knowledge Graph Infrastructure**: Node-graph builders for Components, APIs, Data Flows, and Topology.
+  - **Graph View Builder (PSG Derived)**: Node-graph builders for Components, APIs, Data Flows, and Topology, derived from the Project State Graph.
   - **Heuristic Engine**: Tradeoff analyzers, solution ranking, and optimization search algorithms.
   - **Dependency Intelligence**: Compatibility matrix generation, supply chain provenance, and transitive risk scoring.
 
@@ -493,14 +540,28 @@ AstraBuild is designed for "Zero-Dependency" operation. Unlike traditional build
 ```mermaid
 graph TD
     User([User Requirements]) --> Planning[Intent & Product Design Engine]
+
     Planning --> PSG[Project State Graph]
+
     PSG --> MissionEngine[Autonomous Planning Loop]
-    MissionEngine --> Agents[Multi-Agent Orchestration]
-    Agents --> Runtime[Agent Runtime Engine]
-    Runtime --> CodeIntel[Code Intelligence]
-    CodeIntel --> Quality[Quality Engineering]
-    Quality --> Deploy[Deployment Infrastructure]
+
     PSG --> Context[Context Orchestration Engine]
+
+    MissionEngine --> Runtime[Agent Runtime Engine]
+
+    Context --> Runtime
+
+    Runtime --> Agents[Multi-Agent Orchestration]
+
+    Agents --> CodeIntel[Code Intelligence Layer]
+
+    CodeIntel --> Coding[AI Coding Engine]
+
+    Coding --> Simulation[Change Simulation Layer]
+
+    Simulation --> Quality[Quality Engineering]
+
+    Quality --> Deploy[Deployment Infrastructure]
 ```
 
 ## Security Features
