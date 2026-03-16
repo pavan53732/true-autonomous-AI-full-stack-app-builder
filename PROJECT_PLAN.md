@@ -12,7 +12,6 @@ The entry point of the system, responsible for converting high-level ideas into 
 - **Requirement Extractor**: Automatically identifies features, user personas, API requirements, and database models.
 - **Architecture & API-First Design Engine**: Designs the system structure and formal API contracts (OpenAPI/GraphQL/gRPC) before code generation.
 - **Autonomous Data Modeling Engine**: Automatically designs schemas, handles multi-database persistence, and generates migrations.
-- **Hierarchical Task Decomposer**: Breaks high-level requirements into a structured hierarchy: Epic → Feature → Task → Atomic Action.
 - **Planning Verification Layer**: A pre-generation validator that confirms architecture feasibility, dependency safety, and performance constraints before any code is written.
 
 - **Internal Mechanisms**:
@@ -84,6 +83,11 @@ The Autonomous Planning Loop enables AstraBuild to continuously improve projects
 
 #### Subsystems
 
+**Persistent Evolution Scheduler**
+Maintains long-running improvement cycles across the entire project lifecycle. Responsibilities include scheduling background improvement missions, triggering periodic architecture audits, running dependency health checks, initiating performance optimization missions, and maintaining long-term project evolution even without user interaction.
+
+---
+
 **Opportunity Detection Engine**
 Continuously scans the Project State Graph to identify potential improvements: missing test coverage, outdated dependencies, performance bottlenecks, security risks, incomplete features, and documentation gaps.
 
@@ -95,12 +99,12 @@ Transforms detected opportunities into structured missions containing objectives
 ---
 
 **Priority & Impact Evaluator**
-Ranks missions based on architectural integrity, security importance, user-facing functionality, and system performance signals.
+Ranks missions based on weighted scoring across four dimensions: (1) Architectural integrity impact, (2) Security severity levels, (3) User-facing functionality importance, and (4) System performance degradation signals. High-priority missions are scheduled immediately; lower-priority improvements enter a queued backlog.
 
 ---
 
 **Mission Scheduler**
-Maintains the global mission queue and schedules missions for execution through the Task Graph Engine, ensuring conflict prevention and dependency management.
+Maintains the global mission queue and schedules missions for execution through the Task Graph Engine. Receives missions from the Mission Generator and ensures conflict prevention and dependency management during execution.
 
 ---
 
@@ -121,7 +125,7 @@ The "Brain" that feeds agents the precise information needed for any given task:
 - **Context Limit Manager**: Optimizes context windows to prevent agent hallucination and maximize reasoning quality.
 - **Conflict Detector**: Identifies contradictions between new requirements and existing project architecture.
 - **Agent Context Isolation Layer**: Restricts each agent's visibility to its specific functional domain, preventing context-overload hallucinations and accidental cross-system edits.
-- **Memory Injector**: Bridges project history and previous debugging outcomes into the current agent prompt.
+- **Memory Injector**: Retrieves relevant information from the Memory Layer and integrates it into agent context windows. Bridges project history and previous debugging outcomes into the current agent prompt.
 
 - **Internal Mechanisms**:
   - **Context Orchestration**: Context compression, summarization encoding, and density-based priority ranking.
@@ -137,7 +141,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 - **Governance Enforcement Interface**: A decision engine that validates agent plans against project rules before execution.
 - **Design System Engine**: A specialized UI/UX agent that creates a cohesive visual language (colors, typography, spacing) and consistent component libraries.
 - **Execution Authority (Role Boundaries)**: Enforces permissions (e.g., Frontend agents cannot modify the Database Schema).
-- **Workflow Engine & Post-Deployment Feedback**: Coordinates agent sequences and integrates user feedback loops back into the planning engine.
+- **Workflow Engine & Post-Deployment Feedback**: Coordinates agent sequences and integrates user feedback loops back into the planning engine. Feedback from deployed applications flows through the Opportunity Detection Engine to generate improvement missions.
 
 - **Internal Mechanisms**:
   - **Communication Bus**: Inter-agent message brokering, event broadcasting, and reliable message ordering.
@@ -153,21 +157,31 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
   - **Decision Locks**: Ensures core architectural decisions (e.g., tech stack selection) remain immutable unless explicitly overridden by the Governance Layer.
 - **Tool Authority Gateway**: A mandatory security barrier that intercepts all agent tool-calls for validation against governance rules before execution.
 
-### 4. Agent Runtime Engine (The Factory OS)
+### 4. Agent Runtime Engine (Factory OS)
 
 The runtime environment responsible for the parallel execution, monitoring, and containment of the multi-agent workforce.
+
+#### Model Orchestration Layer
+
+Routes tasks to appropriate AI models based on reasoning complexity, latency constraints, and task category:
+- **Planning Models**: High-reasoning models for architectural decisions
+- **Coding Models**: Fast, efficient models for atomic code edits
+- **Verification Models**: Deterministic models for validation tasks
+- **Simulation Models**: Analysis models for impact prediction
+
+#### Core Components
 
 - **Task Graph Engine**: Converts structured plans and autonomous missions into dependency-aware execution DAGs.
 - **Global Task Queue**: A high-speed priority queue that manages task scheduling, persistence, and failure retries.
 - **Worker Manager**: Spawns ephemeral, sandboxed worker processes for each agent task, preventing memory leaks and runaway reasoning.
 - **Execution Stability Controller**: Maintains runtime stability by coordinating task concurrency, preventing deadlocks, and supervising worker lifecycle.
-- **Mission Execution Interface**: Accepts structured missions from the Autonomous Planning Loop and converts them into task graphs for agent execution.
+- **Mission Execution Interface**: Accepts structured missions from the Mission Scheduler and converts them into task graphs for agent execution via the Task Graph Engine.
 - **Agent Failure Supervisor**: Monitors worker health, detects stuck reasoning loops, and orchestrates task-level recovery.
 - **Observability Pipeline**: Captures telemetry (agent_id, tool_calls, execution traces, duration) and feeds signals into debugging, performance analysis, and the Autonomous Planning Loop.
 
 #### Tool Execution Layer
 
-The Tool Execution Layer provides a controlled interface for agents to interact with external systems and development tools.
+The Tool Execution Layer provides a controlled interface for agents to interact with external systems and development tools. All tool invocations pass through the Tool Authority Gateway before entering the Tool Execution Layer.
 
 Capabilities include:
 
@@ -203,7 +217,7 @@ This ensures stable operation when large numbers of agents run simultaneously.
 
 Advanced reasoning over the entire codebase to ensure safe growth:
 
-- **Global Knowledge Graph View (Generated from the Project State Graph)**: A structural mapping of Components → APIs → Data Models → Services → Routes integrated into the Project State Graph world model.
+- **Global Knowledge Graph View (PSG-Derived)**: A structural mapping of Components → APIs → Data Models → Services → Routes integrated into the Project State Graph world model. All knowledge graphs are projections of the authoritative Project State Graph.
 - **Code Indexer & Semantic Search**: Parses source files and continuously synchronizes symbols, APIs, and dependencies with the Project State Graph.
 - **Dependency Graph Engine**: Real-time tracking of file-level and logic-level relationships.
 - **Infrastructure Graph**: A system-level mapping of Topology (Services, Databases, Queues, Caches, External APIs) linked directly to the Global Knowledge Graph.
@@ -221,7 +235,7 @@ To ensure safe edits across 1000+ file projects, AstraBuild utilizes a structure
 5. **Patch Applier & Merge Manager**: Safely applies validated diffs with built-in conflict resolution and atomic commits.
 
 > [!NOTE]
-> **Policy vs. Mechanism**: While we follow a **Clean Slate Policy** (deciding changes based on global context), the **AI Coding Engine** is the *mechanism* that executes those decisions as precision patches. This ensures architectural purity without the danger of "blind overwrites" that break large systems.
+> **Hybrid Evolution Strategy**: Global reasoning is performed using full-context architectural awareness from the Project State Graph, while code modifications are executed as precision patches through the AI Coding Engine. This ensures architectural purity while preventing the instability of full-project rewrites, allowing for safe, incremental growth in massive codebases.
 
 - **Internal Mechanisms**:
   - **Structural Intelligence**: AST generation, control-flow mapping, and data-flow analysis.
@@ -258,7 +272,8 @@ The system maintains its own quality through a continuous feedback loop and prod
 - **Internal Mechanisms**:
     - **Iterative Reflection**: Self-verification loops and replanning logic based on intermediate validation states.
   - **Production Self-Healing**: Telemetry-triggered hot-patching and canary-based rollback automation.
-  - **Impact Analysis Engine**: Predicting the ripple effect of a code fix across the Global Knowledge Graph.
+  - **Post-Patch Verification Engine**: Validates system integrity after code changes using tests, runtime telemetry, and architecture constraints.
+  - **Failure Simulation Engine**: Models disaster scenarios and stress-tests recovery paths before applying fixes to production systems.
 
 #### 6.1 Multi-Source Error Detection
 
@@ -291,18 +306,27 @@ The system maintains its own quality through a continuous feedback loop and prod
 Ensures long-term context, consistency, and absolute system optimization:
 
 - **World State Memory**: Persistent storage of the Project State Graph enabling cross-session project continuity and long-running autonomous development.
-
 - **Project Memory & Decision Log**: Stores the state, history, and rationale behind every architectural choice.
 - **Semantic Knowledge Base**: An internal library of secure patterns, best practices, and performance standards.
 - **Meta-Learning Engine**: Analyzes patterns across multiple projects to improve code generation quality and pre-emptively apply safeguards.
+- **Operational Memory Store Integration**: Debugging traces and runtime learnings from Section 6.5 are persisted in World State Memory for cross-session continuity.
 
 #### Cross-Project Knowledge Graph
 
 AstraBuild maintains a cross-project knowledge graph containing reusable architecture patterns, bug-resolution strategies, dependency compatibility data, and performance optimization knowledge. This enables the system to transfer learning across projects and accelerate future development cycles.
 
+**Structure and Integration:**
+- **Pattern Library**: Reusable architecture templates, security patterns, and performance optimization strategies
+- **Bug Resolution Database**: Historical debugging traces linked to successful fixes
+- **Dependency Compatibility Matrix**: Version compatibility data and supply chain risk scores
+- **Query Interface**: Semantic search over cross-project learnings via vector embeddings
+- **Update Mechanism**: Automatically ingests successful patterns from completed missions
+
+---
+
 - **Internal Mechanisms**:
   - **Agent Memory Isolation**: Enforces communication via the Global Knowledge Graph and Decision Logs, preventing direct memory sharing and reasoning corruption between agents.
-  - **Graph View Builder (PSG Derived)**: Node-graph builders for Components, APIs, Data Flows, and Topology, derived from the Project State Graph.
+  - **Graph View Builder (PSG Derived)**: Node-graph builders for Components, APIs, Data Flows, and Topology. All graphs are projections derived from the authoritative Project State Graph.
   - **Heuristic Engine**: Tradeoff analyzers, solution ranking, and optimization search algorithms.
   - **Dependency Intelligence**: Compatibility matrix generation, supply chain provenance, and transitive risk scoring.
 
@@ -311,7 +335,7 @@ AstraBuild maintains a cross-project knowledge graph containing reusable archite
 Ensures the generated system is maintainable and transparent:
 
 - **Documentation Generator**: Automatically produces user manuals, API references (Swagger/OpenAPI), and architecture diagrams.
-- **Project Explorer**: Interactive visual mapping of the Global Knowledge Graph for human review.
+- **Project Explorer**: Interactive visual mapping of PSG-derived views for human review.
 
 ### 9. Safety & Governance Layer
 
@@ -325,14 +349,14 @@ Prevents recursive failures and destructive actions:
 
 ## Multi-Agent Topology Cluster Map
 
-To manage ~30 concurrent agents without chaos, AstraBuild organizes specialized roles into **Functional Clusters** overseen by the Orchestration Core.
+To manage ~30 concurrent agents without chaos, AstraBuild organizes specialized roles into **Functional Clusters** overseen by the Orchestration Core. Specialized agents dynamically spawn ephemeral micro-agents for atomic tasks, scaling to hundreds of concurrent operations.
 
 ### 1. Planning Cluster (5 Agents)
 
 - **Intent Interpreter**: Converts natural language into structured mission goals.
 - **Product Planner**: Generates and maintains the feature specification.
 - **Architecture Planner**: Designs high-level system structure and boundaries.
-- **Task Decomposer**: Splits missions into Epic → Feature → Atomic Action.
+- **Task Decomposer**: Performs hierarchical task breakdown: Epic → Feature → Task → Atomic Action. This agent handles both initial decomposition during intent analysis and dynamic refinement during execution.
 - **Constraint Solver**: Verifies architectural feasibility and dependency safety.
 
 ### 2. Architecture & Design Cluster (5 Agents)
@@ -368,6 +392,8 @@ To manage ~30 concurrent agents without chaos, AstraBuild organizes specialized 
 - **Refactor Agent**: Optimizes code structure post-repair for long-term health.
 
 ### 6. Deployment Cluster (4 Agents)
+
+**Note**: The Deployment Cluster consists of AI agents responsible for generating and validating deployment configurations. This is distinct from the Built-in Deployment Infrastructure, which is the runtime environment used to execute and host deployed applications.
 
 - **Build Manager**: Orchestrates the compilation and packaging of binaries.
 - **Container Builder**: Generates Docker-less, slimmed-down application images.
@@ -427,9 +453,8 @@ To manage ~30 concurrent agents without chaos, AstraBuild organizes specialized 
 
 ### AI Integration & Intelligence
 
-- **Model Orchestration Layer**: Routes tasks based on computational complexity, utilizing high-speed models for atomic edits and advanced reasoning models for architectural planning.
+- **AI Provider Integration**: Multi-provider model access (OpenAI, Anthropic, etc.) with provider-specific optimizations.
 - **Context Orchestration Engine**: Context limit management and precision memory injection.
-- **Multi-Agent Scheduler**: Task priority and concurrency management engine.
 - **Vector Database**: For project memory, semantic code search, and Knowledge Graph storage.
 - **AST Parsers**: Tree-sitter and language-specific parsers for code intelligence.
 - **Internal VCS**: Local Git/Checkpoint system for architecture snapshots and change attribution.
@@ -547,13 +572,11 @@ graph TD
 
     PSG --> Context[Context Orchestration Engine]
 
-    MissionEngine --> Runtime[Agent Runtime Engine]
+    MissionEngine --> Agents[Multi-Agent Orchestration]
 
-    Context --> Runtime
+    Agents --> Runtime[Agent Runtime Engine]
 
-    Runtime --> Agents[Multi-Agent Orchestration]
-
-    Agents --> CodeIntel[Code Intelligence Layer]
+    Runtime --> CodeIntel[Code Intelligence Layer]
 
     CodeIntel --> Coding[AI Coding Engine]
 
