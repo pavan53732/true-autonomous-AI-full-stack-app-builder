@@ -18,6 +18,7 @@ The entry point of the system, responsible for converting high-level ideas into 
   - **Intent Reasoning**: Ambiguity detection, domain expansion, and goal hierarchy partitioning.
   - **Planning Logic**: Feasibility solver, milestone ranking, and iterative plan refinement loops.
   - **Constraint Solver**: Automatically resolves architectural conflicts and validates security/scalability requirements against the project plan.
+  - **Formal Reasoning Loop**: Implements structured reasoning patterns (Tree-of-Thought, ReAct) for complex decision-making. All reasoning traces are logged to the Reasoning Cache Engine.
   - **Self-Critique Engine**: Chain-of-thought verification and hypothesis ranking for architectural decisions.
 - **Reasoning Cache Engine**: Stores and retrieves previous state-traversals to optimize latency and reduce repeated reasoning cycles.
 - **Reproducibility Engine**: Enforces deterministic reasoning traces to ensure architectural consistency across identical mission profiles.
@@ -88,6 +89,11 @@ Maintains long-running improvement cycles across the entire project lifecycle. R
 
 ---
 
+**Strategic Planning Engine**
+Handles multi-phase, long-horizon development initiatives such as framework migrations, architectural refactors (monolith → microservices), technology stack upgrades, and system rewrites. Breaks strategic goals into executable mission sequences that span weeks or months of autonomous development work.
+
+---
+
 **Opportunity Detection Engine**
 Continuously scans the Project State Graph to identify potential improvements: missing test coverage, outdated dependencies, performance bottlenecks, security risks, incomplete features, and documentation gaps.
 
@@ -102,6 +108,14 @@ Transforms detected opportunities into structured missions containing objectives
 Ranks missions based on weighted scoring across four dimensions: (1) Architectural integrity impact, (2) Security severity levels, (3) User-facing functionality importance, and (4) System performance degradation signals. High-priority missions are scheduled immediately; lower-priority improvements enter a queued backlog.
 
 ---
+
+**Architecture Optimization Engine**
+Automatically explores alternative architectural patterns through simulation-based evaluation. Tests component arrangements, dependency structures, and data flow patterns in the Change Simulation Layer to identify optimal architectures before applying changes.
+
+---
+
+**Autonomous Experimentation Engine**
+Runs systematic A/B tests on architecture variants, algorithm choices, and implementation strategies. Benchmarks performance, cost, and complexity across multiple dimensions to automatically select optimal solutions. Operates in conjunction with the Architecture Optimization Engine to validate simulated predictions against empirical results.
 
 **Mission Scheduler**
 Maintains the global mission queue and schedules missions for execution through the Task Graph Engine. Receives missions from the Mission Generator and ensures conflict prevention and dependency management during execution.
@@ -126,6 +140,8 @@ The "Brain" that feeds agents the precise information needed for any given task:
 - **Conflict Detector**: Identifies contradictions between new requirements and existing project architecture.
 - **Agent Context Isolation Layer**: Restricts each agent's visibility to its specific functional domain, preventing context-overload hallucinations and accidental cross-system edits.
 - **Memory Injector**: Retrieves relevant information from the Memory Layer and integrates it into agent context windows. Bridges project history and previous debugging outcomes into the current agent prompt.
+- **Prompt Compiler**: Assembles final agent prompts by combining context, memory, system rules, governance policies, and task specifications into optimized prompt templates.
+- **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and token cost minimization. A/B tests prompt variants to identify highest-performing templates.
 
 - **Internal Mechanisms**:
   - **Context Orchestration**: Context compression, summarization encoding, and density-based priority ranking.
@@ -142,14 +158,17 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 - **Design System Engine**: A specialized UI/UX agent that creates a cohesive visual language (colors, typography, spacing) and consistent component libraries.
 - **Execution Authority (Role Boundaries)**: Enforces permissions (e.g., Frontend agents cannot modify the Database Schema).
 - **Workflow Engine & Post-Deployment Feedback**: Coordinates agent sequences and integrates user feedback loops back into the planning engine. Feedback from deployed applications flows through the Opportunity Detection Engine to generate improvement missions.
+- **Agent Skill Library**: Reusable capability modules for common operations (API generation, database migration, query optimization, deployment). Agents dynamically load skills instead of being retrained.
 
 - **Internal Mechanisms**:
   - **Communication Bus**: Inter-agent message brokering, event broadcasting, and reliable message ordering.
   - **Collaboration Consensus**: Multi-agent voting, negotiation protocols, and conflict resolution policies.
   - **Agent Lifecycle**: Dynamic spawning, cloning, and specialized role refinement including Backend Architect, Frontend Stylist, Security Auditor, Database Schema Designer, and Performance Optimizer.
+  - **Agent Evolution Coordination**: Works with the Agent Evolution Engine to integrate newly discovered high-performing specializations into active agent populations.
   - **Governance Security**: Execution authority enforcement, role boundary auditing, and decision locks.
   - **Agent Swarm Coordination**: Protocols for orchestrating hundreds of micro-agents for high-concurrency atomic edits across massive directory structures.
   - **Agent Failover & Recovery**: Automated health-check triggers that spawn replica agents upon detection of primary role hangs or crashes.
+  - **Capability Benchmark Engine**: Evaluates agent performance through standardized coding tasks, reasoning accuracy tests, and skill scoring. Provides objective metrics for the Agent Evolution Engine to identify improvement opportunities.
 
 - **Agent Safety Boundaries**:
   - **Tool Permissions**: Granular access control for each agent role (e.g., Frontend agents cannot access database-write tools).
@@ -168,6 +187,8 @@ Routes tasks to appropriate AI models based on reasoning complexity, latency con
 - **Coding Models**: Fast, efficient models for atomic code edits
 - **Verification Models**: Deterministic models for validation tasks
 - **Simulation Models**: Analysis models for impact prediction
+
+**Inference Scheduler**: Optimizes model inference operations through intelligent batching, token throughput optimization, and latency balancing across concurrent agent requests. Maximizes GPU utilization while minimizing per-task inference costs.
 
 #### Core Components
 
@@ -191,6 +212,7 @@ Capabilities include:
 - Browser automation
 - API integrations
 - Package management operations
+- **External Knowledge Fetching**: Retrieves patterns, documentation, and best practices from Global Code Intelligence Network during agent task execution
 
 All tool calls pass through the Tool Authority Gateway and sandboxing systems to enforce governance policies and prevent unsafe actions.
 
@@ -256,6 +278,8 @@ Key capabilities:
 - Performance regression prediction
 - Security vulnerability detection
 - Rollback plan generation
+- **Architecture Pattern Testing**: Evaluates alternative component arrangements and dependency structures for the Architecture Optimization Engine
+- **External Pattern Validation**: Cross-references proposed patterns against Global Code Intelligence Network to validate alignment with current community best practices
 
 This layer sits between code mutation and verification to catch issues early in the development process.
 
@@ -309,6 +333,7 @@ Ensures long-term context, consistency, and absolute system optimization:
 - **Project Memory & Decision Log**: Stores the state, history, and rationale behind every architectural choice.
 - **Semantic Knowledge Base**: An internal library of secure patterns, best practices, and performance standards.
 - **Meta-Learning Engine**: Analyzes patterns across multiple projects to improve code generation quality and pre-emptively apply safeguards.
+- **Agent Evolution Engine**: Automatically discovers and evolves high-performing agent specializations through execution analysis. Generates new skill modules from successful mission patterns and benchmarks agent capabilities against performance metrics.
 - **Operational Memory Store Integration**: Debugging traces and runtime learnings from Section 6.5 are persisted in World State Memory for cross-session continuity.
 
 #### Cross-Project Knowledge Graph
@@ -321,6 +346,8 @@ AstraBuild maintains a cross-project knowledge graph containing reusable archite
 - **Dependency Compatibility Matrix**: Version compatibility data and supply chain risk scores
 - **Query Interface**: Semantic search over cross-project learnings via vector embeddings
 - **Update Mechanism**: Automatically ingests successful patterns from completed missions
+- **Agent Skill Repository**: Stores evolved agent capabilities discovered through execution analysis
+- **Global Code Intelligence Network**: Continuously indexes external knowledge sources including GitHub repositories, npm/PyPI/Maven ecosystems, framework documentation, security advisories (CVE, OWASP), and developer communities (StackOverflow, Dev.to). Provides real-time access to latest patterns, breaking changes, vulnerability data, and community best practices. Operates in hybrid mode: on-demand fetching when online, cached patterns when offline.
 
 ---
 
@@ -329,6 +356,7 @@ AstraBuild maintains a cross-project knowledge graph containing reusable archite
   - **Graph View Builder (PSG Derived)**: Node-graph builders for Components, APIs, Data Flows, and Topology. All graphs are projections derived from the authoritative Project State Graph.
   - **Heuristic Engine**: Tradeoff analyzers, solution ranking, and optimization search algorithms.
   - **Dependency Intelligence**: Compatibility matrix generation, supply chain provenance, and transitive risk scoring.
+  - **Global Code Intelligence Integration**: Fetches real-time external dependency data including latest versions, security vulnerabilities (CVE), deprecation notices, and community adoption trends. Integrates with Dependency Guard for proactive vulnerability detection.
 
 ### 8. Documentation & Knowledge Transfer
 
@@ -349,7 +377,7 @@ Prevents recursive failures and destructive actions:
 
 ## Multi-Agent Topology Cluster Map
 
-To manage ~30 concurrent agents without chaos, AstraBuild organizes specialized roles into **Functional Clusters** overseen by the Orchestration Core. Specialized agents dynamically spawn ephemeral micro-agents for atomic tasks, scaling to hundreds of concurrent operations.
+To manage **34 concurrent specialized agents** without chaos, AstraBuild organizes specialized roles into **Functional Clusters** overseen by the Orchestration Core. Specialized agents dynamically spawn ephemeral micro-agents for atomic tasks, scaling to hundreds of concurrent operations.
 
 ### 1. Planning Cluster (5 Agents)
 
@@ -381,7 +409,7 @@ To manage ~30 concurrent agents without chaos, AstraBuild organizes specialized 
 - **Test Generator**: Produces unit, integration, and end-to-end test suites.
 - **Security Auditor**: Conducts SAST/DAST and vulnerability scanning.
 - **Performance Analyzer**: Detects inefficiencies and bottlenecks in the code.
-- **Architecture Validator**: Confirms output matches the original design blueprint.
+- **Architecture Validator**: Confirms output matches the original design blueprint and monitors for architecture drift from PSG invariants.
 
 ### 5. Repair & Debug Cluster (5 Agents)
 
@@ -400,12 +428,13 @@ To manage ~30 concurrent agents without chaos, AstraBuild organizes specialized 
 - **CI/CD Pipeline Manager**: Implements CI/CD and cloud-native configuration.
 - **Deployment Verifier**: Conducts smoke-tests and health-checks post-rollout.
 
-### 7. Governance & Control Cluster (4 Agents)
+### 7. Governance & Control Cluster (5 Agents)
 
 - **Agent Orchestrator**: High-level scheduler that prevents task collisions.
 - **Context Manager**: Controls the "visibility window" for every active agent.
 - **Decision Governor**: Validates every agent proposal against architectural locks.
 - **Runtime Stability Manager**: Oversees execution health, prevents agent starvation, and balances task concurrency.
+- **Agent Performance Monitor**: Tracks agent success rates, failure patterns, and patch quality. Routes critical tasks to high-performing agents and triggers retraining when performance degrades.
 
 ## Key Features
 
@@ -414,6 +443,13 @@ To manage ~30 concurrent agents without chaos, AstraBuild organizes specialized 
 - Real-time app preview during development.
 - Hot-reloading capabilities.
 - Multi-device testing interface.
+
+### Conversation & Session Management
+
+- **Conversation Thread Manager**: Maintains user interaction history, tracks session state, and manages multi-turn conversations.
+- **Prompt History System**: Logs all prompts sent to agents for debugging, auditing, and improvement analysis.
+- **Session State Manager**: Persists user preferences, active project context, and conversation state across sessions.
+- **Notification System**: Event notifications for mission completions, failures, and required user interventions.
 
 ### AI Provider Settings
 
@@ -610,6 +646,61 @@ Unlike traditional development environments, AstraBuild is architected as a **Tr
 - **Security & Speed**: A focused, single-user autonomous environment allows for deeper sandboxing and faster local execution without the overhead of real-time synchronization or team permissions.
 
 This ensures that AstraBuild remains a "Force Multiplier" for individuals, enabling one person to design and deploy systems that would traditionally require a full team.
+
+---
+
+## Implementation Notes & Design Decisions
+
+### Resource Optimization Strategy
+
+AstraBuild is designed to maximize computational efficiency and resource utilization:
+
+- **Model Routing Intelligence**: Routes tasks to appropriate AI models based on complexity - simple edits use fast models, architectural planning uses high-reasoning models
+- **Token Efficiency**: Context compression, precision memory injection, and minimal-context worker provisioning minimize token consumption
+- **Local-First Execution**: All build processes, testing, and deployment run locally without external dependencies
+- **One-Shot Correct Design**: Simulation-guided optimization prevents trial-and-error iterations
+- **Execution-Based Learning**: Agents improve through real mission success rather than production experimentation
+- **Resource Scheduling**: Dynamic GPU/CPU allocation and agent concurrency control optimize computational performance
+
+**Resource Efficiency Targets:**
+- Development: Self-contained installation
+- Runtime: Fully offline-capable operation
+- AI Inference: User's choice of local or cloud providers
+- Scaling: Resources scale with actual usage patterns
+
+---
+
+### Global Code Intelligence Network - Integration Strategy
+
+**Decision:** Global Code Intelligence Network is **INCLUDED** as a core capability.
+
+**Rationale:**
+Since AstraBuild uses internet-connected AI models for reasoning and code generation, integrating live external knowledge sources provides significant advantages:
+
+1. **Latest Framework Patterns**: Access to cutting-edge best practices from active projects
+2. **Real-Time Dependency Intelligence**: Current vulnerability data, deprecation notices, version compatibility
+3. **API Ecosystem Awareness**: Live API documentation, breaking changes, migration guides
+4. **Community Knowledge**: StackOverflow patterns, GitHub issue solutions, Reddit discussions
+5. **Competitive Edge**: System evolves with the broader software ecosystem, not just internal learnings
+
+**Implementation Approach:**
+- **On-Demand Fetching**: AI agents retrieve relevant external patterns during mission execution
+- **Caching Layer**: Frequently accessed patterns stored in Cross-Project Knowledge Graph
+- **Hybrid Knowledge Base**: Combines pre-trained AI knowledge + live internet data + internal project learnings
+- **Offline Fallback**: Core functionality works without internet; enhanced features available when connected
+
+**Data Sources:**
+- GitHub repository patterns (trending architectures, popular libraries)
+- npm/PyPI/Maven ecosystem analytics
+- Framework documentation (React, Vue, Django, Spring Boot updates)
+- Security advisories (CVE databases, OWASP updates)
+- Developer communities (StackOverflow, Dev.to, Hashnode)
+
+**Privacy & Security Safeguards:**
+- Read-only access (no code upload to external services)
+- Pattern extraction only (no proprietary code ingestion)
+- User-configurable data sources
+- Local caching reduces repeated external calls
 
 ---
 
