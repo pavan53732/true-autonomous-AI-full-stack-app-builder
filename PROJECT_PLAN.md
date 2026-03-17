@@ -480,7 +480,7 @@ Ensures long-term context, consistency, and absolute system optimization:
 - **Semantic Knowledge Base**: An internal library of secure patterns, best practices, and performance standards.
 - **Meta-Learning Engine**: Analyzes patterns across multiple projects to improve code generation quality and pre-emptively apply safeguards.
 - **Agent Evolution Engine**: Automatically discovers and evolves high-performing agent specializations through execution analysis. Generates new skill modules from successful mission patterns and benchmarks agent capabilities against performance metrics.
-- **Operational Memory Store Integration**: Debugging traces and runtime learnings are stored as auxiliary memory. When persistence to World State Memory is required, all writes must pass through the Governance Enforcement Interface; direct mutation of the Project State Graph is not permitted.
+- **Operational Memory Store Integration**: Debugging traces and runtime learnings are stored as auxiliary memory. Operational Memory is non-authoritative and exists outside the Project State Graph. When persistence to World State Memory is required, all writes must pass through the Governance Enforcement Interface; direct mutation of the Project State Graph is not permitted.
 
 #### Cross-Project Knowledge Graph
 
