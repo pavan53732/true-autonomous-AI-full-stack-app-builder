@@ -46,6 +46,7 @@ Any cost-based reasoning is a governance violation and must be rejected.
 - **All interaction-driven mutations (including micro-missions) must pass governance enforcement before execution**
 - **Users cannot directly trigger execution, bypass governance, or mutate system state**
 - **Agents cannot modify their own permissions, roles, or authority boundaries**
+- **PSG Transaction Boundary**: All state mutations are funneled through a single transaction layer that enforces governance validation before any write is committed to the Project State Graph.
 - **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
 - **All user-provided intents are interpreted, not executed**
 
@@ -479,7 +480,7 @@ Ensures long-term context, consistency, and absolute system optimization:
 - **Semantic Knowledge Base**: An internal library of secure patterns, best practices, and performance standards.
 - **Meta-Learning Engine**: Analyzes patterns across multiple projects to improve code generation quality and pre-emptively apply safeguards.
 - **Agent Evolution Engine**: Automatically discovers and evolves high-performing agent specializations through execution analysis. Generates new skill modules from successful mission patterns and benchmarks agent capabilities against performance metrics.
-- **Operational Memory Store Integration**: Debugging traces and runtime learnings from Section 6.5 are persisted in World State Memory for cross-session continuity.
+- **Operational Memory Store Integration**: Debugging traces and runtime learnings are stored as auxiliary memory. When persistence to World State Memory is required, all writes must pass through the Governance Enforcement Interface; direct mutation of the Project State Graph is not permitted.
 
 #### Cross-Project Knowledge Graph
 
@@ -545,6 +546,11 @@ Prevents recursive failures and destructive actions:
   - Proxy signals: token minimization framed as savings, model downgrades for efficiency
   - Scoring contamination: any ranking dimension including cost
   - Routing contamination: model/provider selection based on cost
+
+  - Behavioral patterns:
+    - Model selection that reduces capability without task-based justification
+    - Context reduction that degrades reasoning quality
+    - Latency or throughput optimizations that sacrifice correctness or reliability
 
   On detection:
   - Block action via Governance Enforcement Interface
@@ -857,7 +863,7 @@ This ensures that AstraBuild remains a "Force Multiplier" for individuals, enabl
 
 ### Execution Efficiency Strategy
 
-AstraBuild is designed to maximize computational efficiency and resource utilization:
+AstraBuild is designed to maximize execution stability and system throughput:
 
 - **Model Routing Intelligence**: Routes tasks to appropriate AI models based on reasoning complexity and task category
 - **Execution Efficiency**: Context compression, precision memory injection, and precision-context worker provisioning improve execution speed and reasoning quality
