@@ -15,6 +15,24 @@ All coordination, permissions, and execution control exist **only at the AI agen
 
 This is NOT a collaborative SaaS platform. It is a **single-operator autonomous software factory**.
 
+## Cost-Neutrality Invariant
+
+AstraBuild must not optimize, rank, route, or make decisions based on economic cost.
+
+Prohibited:
+- Monetary cost (API, compute, infrastructure)
+- Token usage as a pricing or savings signal
+- Cost-performance tradeoffs
+- Budget-aware execution strategies
+
+Allowed decision factors:
+- Correctness
+- Reliability
+- Performance
+- Architectural integrity
+
+Any cost-based reasoning is a governance violation and must be rejected.
+
 ## Core Architecture
 
 ### Authority Model
@@ -211,7 +229,7 @@ The "Brain" that feeds agents the precise information needed for any given task:
 - **Agent Context Isolation Layer**: Restricts each agent's visibility to its specific functional domain, preventing context-overload hallucinations and accidental cross-system edits.
 - **Memory Injector**: Retrieves relevant information from the Memory Layer and integrates it into agent context windows. Bridges project history and previous debugging outcomes into the current agent prompt.
 - **Prompt Compiler**: Assembles final agent prompts by combining context, memory, system rules, governance policies, and task specifications into optimized prompt templates.
-- **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and token efficiency optimization. A/B tests prompt variants to identify highest-performing templates.
+- **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and context precision optimization. A/B tests prompt variants to identify highest-performing templates.
 - **Interaction Context Bridge**: Receives refined and disambiguated intent from the Interaction Intelligence Layer and transforms it into PSG-aligned contextual inputs for agent execution.
 
 - **Internal Mechanisms**:
@@ -346,7 +364,7 @@ This ensures stable operation when large numbers of agents run simultaneously.
 
 - **Internal Mechanisms**:
   - **Parallelism Engine**: Worker pool management and dynamic task coordination.
-  - **Context Isolation**: Minimal-context provisioning for workers to maximize speed and minimize hallucination.
+  - **Context Isolation**: Precision-context provisioning for workers to maximize speed and minimize hallucination.
   - **Incremental Execution Mode**: Supports fine-grained execution cycles for micro-missions without triggering full task graph recomputation.
   - **Failure Handling**: Staging of retries and automated debugging hand-off for crashed tasks.
 
@@ -519,6 +537,19 @@ Prevents recursive failures and destructive actions:
 - **Dependency Abandonment Detection**: Automated alerts for packages with stagnant maintenance or critical lifespan decay.
 - **Supply Chain Provenance**: Cryptographic verification of the origin and integrity of every code byte and binary within the builder ecosystem.
 - **Micro-Mutation Guard**: Applies lightweight governance validation for low-risk micro-missions to enable high-speed iteration without compromising system integrity.
+- **Cost Contamination Detector**:
+  Detects and blocks reintroduction of cost-related logic across planning, reasoning, scoring, routing, and telemetry.
+
+  Detection includes:
+  - Explicit terms: cost, pricing, budget, cheap, expensive
+  - Proxy signals: token minimization framed as savings, model downgrades for efficiency
+  - Scoring contamination: any ranking dimension including cost
+  - Routing contamination: model/provider selection based on cost
+
+  On detection:
+  - Block action via Governance Enforcement Interface
+  - Log violation in Governance Transparency Layer
+  - Remove cost-related factors before re-execution
 
 ### Governance Transparency Layer
 
@@ -829,13 +860,13 @@ This ensures that AstraBuild remains a "Force Multiplier" for individuals, enabl
 AstraBuild is designed to maximize computational efficiency and resource utilization:
 
 - **Model Routing Intelligence**: Routes tasks to appropriate AI models based on reasoning complexity and task category
-- **Execution Efficiency**: Context compression, precision memory injection, and minimal-context worker provisioning improve execution speed and reasoning quality
+- **Execution Efficiency**: Context compression, precision memory injection, and precision-context worker provisioning improve execution speed and reasoning quality
 - **Local-First Execution**: All build processes, testing, and deployment run locally without external dependencies
 - **Deterministic Design Strategy**: Simulation-guided optimization prevents unnecessary iteration cycles
 - **Execution-Based Learning**: Agents improve through real mission success rather than production experimentation
-- **Resource Scheduling**: Dynamic GPU/CPU allocation and agent concurrency control ensure stable system operation under load
+- **Resource Scheduling**: Dynamic GPU/CPU allocation and agent concurrency control ensure stable system operation and maximum system throughput
 
-**Resource Efficiency Targets:**
+**System Execution Targets:**
 - Development: Self-contained installation
 - Runtime: Fully offline-capable operation
 - AI Inference: User's choice of local or cloud providers
