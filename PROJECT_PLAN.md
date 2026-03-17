@@ -25,6 +25,7 @@ This is NOT a collaborative SaaS platform. It is a **single-operator autonomous 
 - **All actions must pass Governance Enforcement before execution**
 - **Governance Enforcement is the final authority on all state mutations**
 - **All execution decisions must include an explicit justification and confidence score before being applied**
+- **All interaction-driven mutations (including micro-missions) must pass governance enforcement before execution**
 - **Users cannot directly trigger execution, bypass governance, or mutate system state**
 - **Agents cannot modify their own permissions, roles, or authority boundaries**
 - **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
@@ -159,7 +160,7 @@ Maintains the global mission queue and schedules missions for execution through 
 ---
 
 **Micro-Mission Generator**
-Generates fine-grained tasks derived from active missions or real-time interaction feedback (UI tweaks, minor refactors, alignment fixes).
+Generates fine-grained tasks derived from active missions or real-time interaction feedback (UI tweaks, minor refactors, alignment fixes). Micro-missions are restricted to low-risk, localized changes and cannot modify global architecture or decision-locked components.
 
 **Autonomous Feedback Loop**
 Validates mission results and updates the Project State Graph, triggering the next cycle of improvement missions to enable continuous, self-driven evolution.
@@ -258,6 +259,9 @@ Bridges the gap between user intent, visual state, and system execution by enabl
   - Risk level (low / medium / high)
   - Rollback availability
 
+- **Visual-to-PSG Consistency Enforcement**:
+  Ensures all UI-level modifications are reflected in and validated against the Project State Graph before persistence
+
 ### 3. Multi-Agent Orchestration & Design Intelligence
 
 AstraBuild coordinates a team of specialized AI agents under a strict governance framework:
@@ -266,7 +270,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 
 - **Governance Enforcement Interface**: A decision engine that validates agent plans against project rules before execution.
 - **Design System Engine**: A specialized UI/UX agent that creates a cohesive visual language (colors, typography, spacing) and consistent component libraries.
-- **Execution Authority (Role Boundaries)**: Enforces permissions (e.g., Frontend agents cannot modify the Database Schema).
+- **Execution Authority (Agent Boundary Enforcement)**: Enforces permissions (e.g., Frontend agents cannot modify the Database Schema).
 - **Workflow Engine & Post-Deployment Feedback**: Coordinates agent sequences and integrates user feedback loops back into the planning engine. Feedback from deployed applications flows through the Opportunity Detection Engine to generate improvement missions.
 - **Agent Skill Library**: Reusable capability modules for common operations (API generation, database migration, query optimization, deployment). Agents dynamically load skills instead of being retrained.
 
@@ -488,7 +492,9 @@ AstraBuild maintains a cross-project knowledge graph containing reusable archite
   - Interaction patterns
 
   This profile influences planning, design, and decision-making for personalized system behavior.
-  - **Global Code Intelligence Integration**: Fetches real-time external dependency data including latest versions, security vulnerabilities (CVE), deprecation notices, and community adoption trends. Integrates with Dependency Guard for proactive vulnerability detection.
+
+- **Global Code Intelligence Integration**:
+  Fetches real-time external dependency data including latest versions, security vulnerabilities (CVE), deprecation notices, and community adoption trends. Integrates with Dependency Guard for proactive vulnerability detection.
 
 ### 8. Documentation & Knowledge Transfer
 
