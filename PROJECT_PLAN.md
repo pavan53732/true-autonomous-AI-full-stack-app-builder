@@ -21,7 +21,7 @@ This is NOT a collaborative SaaS platform. It is a **single-operator autonomous 
 
 - **Project State Graph (PSG)** is the single source of truth
 - **Agents operate on PSG, not user-provided intent (normalized from prompts)**
-- **User-provided intent is advisory, not authoritative**
+- **User-provided intent is advisory and always interpreted, never directly executed**
 - **All actions must pass Governance Enforcement before execution**
 - **Governance Enforcement is the final authority on all state mutations**
 - **All execution decisions must include an explicit justification and confidence score before being applied**
@@ -212,6 +212,7 @@ The "Brain" that feeds agents the precise information needed for any given task:
 - **Memory Injector**: Retrieves relevant information from the Memory Layer and integrates it into agent context windows. Bridges project history and previous debugging outcomes into the current agent prompt.
 - **Prompt Compiler**: Assembles final agent prompts by combining context, memory, system rules, governance policies, and task specifications into optimized prompt templates.
 - **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and token cost minimization. A/B tests prompt variants to identify highest-performing templates.
+- **Interaction Context Bridge**: Receives refined and disambiguated intent from the Interaction Intelligence Layer and transforms it into PSG-aligned contextual inputs for agent execution.
 
 - **Internal Mechanisms**:
   - **Context Orchestration**: Context compression, summarization encoding, and density-based priority ranking.
@@ -771,7 +772,9 @@ AstraBuild is designed for "Zero-Dependency" operation. Unlike traditional build
 
 ```mermaid
 graph TD
-    User([User Requirements]) --> Planning[Intent & Product Design Engine]
+    User([User Requirements]) --> Interaction[Interaction Intelligence Layer]
+
+    Interaction --> Planning[Intent & Product Design Engine]
 
     Planning --> PSG[Project State Graph]
 
