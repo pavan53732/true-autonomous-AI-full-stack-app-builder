@@ -24,6 +24,7 @@ This is NOT a collaborative SaaS platform. It is a **single-operator autonomous 
 - **User-provided intent is advisory, not authoritative**
 - **All actions must pass Governance Enforcement before execution**
 - **Governance Enforcement is the final authority on all state mutations**
+- **All execution decisions must include an explicit justification and confidence score before being applied**
 - **Users cannot directly trigger execution, bypass governance, or mutate system state**
 - **Agents cannot modify their own permissions, roles, or authority boundaries**
 - **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
@@ -157,6 +158,9 @@ Maintains the global mission queue and schedules missions for execution through 
 
 ---
 
+**Micro-Mission Generator**
+Generates fine-grained tasks derived from active missions or real-time interaction feedback (UI tweaks, minor refactors, alignment fixes).
+
 **Autonomous Feedback Loop**
 Validates mission results and updates the Project State Graph, triggering the next cycle of improvement missions to enable continuous, self-driven evolution.
 
@@ -212,6 +216,47 @@ The "Brain" that feeds agents the precise information needed for any given task:
   - **Context Orchestration**: Context compression, summarization encoding, and density-based priority ranking.
   - **Retrieval Intelligence**: Semantic re-ranking, query rewriting, and hybrid code/doc retrieval fallbacks.
   - **Context Fusion**: Merging system rules, project facts, and memory into a single high-fidelity "reasoning state."
+
+### 2.5 Interaction Intelligence Layer (Human ↔ System Alignment)
+
+Bridges the gap between user intent, visual state, and system execution by enabling deep, real-time interaction loops.
+
+#### Core Capabilities
+
+- **Visual Intent Alignment Engine**:
+  Interprets user intent in the context of the current UI state.
+  - Captures UI snapshots from the Preview System
+  - Analyzes layout, spacing, hierarchy, and visual structure
+  - Maps vague intent (e.g., “make it cleaner”) to concrete UI transformations
+
+- **UI-to-Code Reverse Mapping Engine**:
+  Enables direct mapping between rendered UI elements and source code.
+  - Identifies component → file → props relationships
+  - Supports interaction-driven modifications (click → modify → patch)
+
+- **Incremental Reasoning Loop**:
+  Enables sub-task level iteration cycles:
+  observe → mutate → validate → re-observe
+  without requiring full mission re-execution.
+
+- **Micro-Mission Executor**:
+  Handles ultra-small, low-risk mutations (UI tweaks, minor fixes) with minimal planning overhead.
+
+- **Intent Clarification Engine**:
+  Detects ambiguity in user-provided intent and generates structured interpretation options for refinement.
+
+- **Decision Explanation Engine**:
+  Translates system decisions into human-understandable reasoning:
+  - What changed
+  - Why it changed
+  - Tradeoffs involved
+  - Expected improvement
+
+- **Decision Confidence Model**:
+  Attaches confidence scores and risk levels to all system actions:
+  - Confidence score (0–1)
+  - Risk level (low / medium / high)
+  - Rollback availability
 
 ### 3. Multi-Agent Orchestration & Design Intelligence
 
@@ -298,6 +343,7 @@ This ensures stable operation when large numbers of agents run simultaneously.
 - **Internal Mechanisms**:
   - **Parallelism Engine**: Worker pool management and dynamic task coordination.
   - **Context Isolation**: Minimal-context provisioning for workers to maximize speed and minimize hallucination.
+  - **Incremental Execution Mode**: Supports fine-grained execution cycles for micro-missions without triggering full task graph recomputation.
   - **Failure Handling**: Staging of retries and automated debugging hand-off for crashed tasks.
 
 ### 5. Code Intelligence & Optimization Layer
@@ -343,6 +389,7 @@ Key capabilities:
 - Performance regression prediction
 - Security vulnerability detection
 - Rollback plan generation
+- **Visual Consistency Validation**: Ensures UI changes maintain layout integrity, spacing consistency, and design system alignment before application
 - **Architecture Pattern Testing**: Evaluates alternative component arrangements and dependency structures for the Architecture Optimization Engine
 - **External Pattern Validation**: Cross-references proposed patterns against Global Code Intelligence Network to validate alignment with current community best practices
 
@@ -432,6 +479,15 @@ AstraBuild maintains a cross-project knowledge graph containing reusable archite
   - **Graph View Builder (PSG Derived)**: Node-graph builders for Components, APIs, Data Flows, and Topology. All graphs are projections derived from the authoritative Project State Graph.
   - **Heuristic Engine**: Tradeoff analyzers, solution ranking, and optimization search algorithms.
   - **Dependency Intelligence**: Compatibility matrix generation, supply chain provenance, and transitive risk scoring.
+
+- **User Intent Profile Layer**:
+  Learns user-specific preferences over time:
+  - UI style preferences (minimal, dense, expressive)
+  - Architectural bias (simplicity vs scalability)
+  - Naming conventions
+  - Interaction patterns
+
+  This profile influences planning, design, and decision-making for personalized system behavior.
   - **Global Code Intelligence Integration**: Fetches real-time external dependency data including latest versions, security vulnerabilities (CVE), deprecation notices, and community adoption trends. Integrates with Dependency Guard for proactive vulnerability detection.
 
 ### 8. Documentation & Knowledge Transfer
@@ -445,6 +501,7 @@ Ensures the generated system is maintainable and transparent:
   - High-level dependencies (no raw graph exposure)
   - Architecture structure visualization
   - Decision lock visibility
+- **Visual Evolution Timeline**: Tracks UI and architecture changes over time with before/after comparisons for user understanding
 
 ### 9. Safety & Governance Layer
 
@@ -455,6 +512,7 @@ Prevents recursive failures and destructive actions:
 - **Execution Monitoring**: Real-time monitoring of agent behavior to ensure compliance with security boundaries.
 - **Dependency Abandonment Detection**: Automated alerts for packages with stagnant maintenance or critical lifespan decay.
 - **Supply Chain Provenance**: Cryptographic verification of the origin and integrity of every code byte and binary within the builder ecosystem.
+- **Micro-Mutation Guard**: Applies lightweight governance validation for low-risk micro-missions to enable high-speed iteration without compromising system integrity.
 
 ### Governance Transparency Layer
 
@@ -464,6 +522,8 @@ While internal governance is fully automated, AstraBuild exposes an abstracted v
 
 - Decision rejection reasons (e.g., violates architecture constraint)
 - Blocked actions with explanations
+- Decision explanations (human-readable summaries of system actions and reasoning)
+- Confidence scores and risk indicators for each action
 - Execution audit logs
 - Decision lock status (locked/unlocked)
 
@@ -487,7 +547,7 @@ To manage **34 concurrent specialized agents** without chaos, AstraBuild organiz
 - **API Contract Designer**: Formally specifies OpenAPI/GraphQL/gRPC schemas.
 - **Data Model Architect**: Designs database schemas and multi-database persistence.
 - **Design System Agent**: Establishes UI style guides, typography, and spacing.
-- **Security Architect**: Establishes authentication protocols and RBAC permissions.
+- **Security Architect**: Establishes authentication protocols and agent-level access control policies.
 
 ### 3. Engineering Cluster (5 Agents)
 
@@ -667,6 +727,7 @@ The preview system is not just a viewer; it is a **Feedback Sensor Network** tha
 #### 5.3 AI Observation & Interaction
 
 - **Screenshot Engine**: Generates visual snapshots for UI reasoning, layout validation, and regression detection.
+- **Visual State Interpreter**: Converts UI screenshots into structured layout representations (component tree, spacing, hierarchy) for reasoning and validation
 - **Browser Automation Controller**: Provides a "Puppeteer-like" interface for agents to click buttons, fill forms, and run UI tests.
 - **UI Interaction Capture**: Feeds user events (clicks, navigation) back to the AI to understand application state.
 - **HMR & Live Reload Manager**: Orchestrates Hot Module Replacement and iframe refreshing to reflect code changes instantly.
