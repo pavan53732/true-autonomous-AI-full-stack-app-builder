@@ -152,7 +152,7 @@ Automatically explores alternative architectural patterns through simulation-bas
 ---
 
 **Autonomous Experimentation Engine**
-Runs systematic A/B tests on architecture variants, algorithm choices, and implementation strategies. Benchmarks performance, cost, and complexity across multiple dimensions to automatically select optimal solutions. Operates in conjunction with the Architecture Optimization Engine to validate simulated predictions against empirical results.
+Runs systematic A/B tests on architecture variants, algorithm choices, and implementation strategies. Benchmarks performance, reliability, and complexity across multiple dimensions to automatically select optimal solutions. Operates in conjunction with the Architecture Optimization Engine to validate simulated predictions against empirical results.
 
 **Mission Scheduler**
 Maintains the global mission queue and schedules missions for execution through the Task Graph Engine. Receives missions from the Mission Generator and ensures conflict prevention and dependency management during execution.
@@ -211,7 +211,7 @@ The "Brain" that feeds agents the precise information needed for any given task:
 - **Agent Context Isolation Layer**: Restricts each agent's visibility to its specific functional domain, preventing context-overload hallucinations and accidental cross-system edits.
 - **Memory Injector**: Retrieves relevant information from the Memory Layer and integrates it into agent context windows. Bridges project history and previous debugging outcomes into the current agent prompt.
 - **Prompt Compiler**: Assembles final agent prompts by combining context, memory, system rules, governance policies, and task specifications into optimized prompt templates.
-- **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and token cost minimization. A/B tests prompt variants to identify highest-performing templates.
+- **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and token efficiency optimization. A/B tests prompt variants to identify highest-performing templates.
 - **Interaction Context Bridge**: Receives refined and disambiguated intent from the Interaction Intelligence Layer and transforms it into PSG-aligned contextual inputs for agent execution.
 
 - **Internal Mechanisms**:
@@ -303,7 +303,7 @@ Routes tasks to appropriate AI models based on reasoning complexity, latency con
 - **Verification Models**: Deterministic models for validation tasks
 - **Simulation Models**: Analysis models for impact prediction
 
-**Inference Scheduler**: Optimizes model inference operations through intelligent batching, token throughput optimization, and latency balancing across concurrent agent requests. Maximizes GPU utilization while minimizing per-task inference costs.
+**Inference Scheduler**: Optimizes model inference operations through intelligent batching, token throughput optimization, and latency balancing across concurrent agent requests. Maximizes GPU utilization while maintaining stable and efficient inference throughput.
 
 #### Core Components
 
@@ -341,7 +341,6 @@ Responsibilities include:
 - Model routing across AI providers
 - GPU/CPU allocation
 - Task prioritization under load
-- Cost-aware execution strategies
 
 This ensures stable operation when large numbers of agents run simultaneously.
 
@@ -825,22 +824,22 @@ This ensures that AstraBuild remains a "Force Multiplier" for individuals, enabl
 
 ## Implementation Notes & Design Decisions
 
-### Resource Optimization Strategy
+### Execution Efficiency Strategy
 
 AstraBuild is designed to maximize computational efficiency and resource utilization:
 
-- **Model Routing Intelligence**: Routes tasks to appropriate AI models based on complexity - simple edits use fast models, architectural planning uses high-reasoning models
-- **Token Efficiency**: Context compression, precision memory injection, and minimal-context worker provisioning minimize token consumption
+- **Model Routing Intelligence**: Routes tasks to appropriate AI models based on reasoning complexity and task category
+- **Execution Efficiency**: Context compression, precision memory injection, and minimal-context worker provisioning improve execution speed and reasoning quality
 - **Local-First Execution**: All build processes, testing, and deployment run locally without external dependencies
-- **One-Shot Correct Design**: Simulation-guided optimization prevents trial-and-error iterations
+- **Deterministic Design Strategy**: Simulation-guided optimization prevents unnecessary iteration cycles
 - **Execution-Based Learning**: Agents improve through real mission success rather than production experimentation
-- **Resource Scheduling**: Dynamic GPU/CPU allocation and agent concurrency control optimize computational performance
+- **Resource Scheduling**: Dynamic GPU/CPU allocation and agent concurrency control ensure stable system operation under load
 
 **Resource Efficiency Targets:**
 - Development: Self-contained installation
 - Runtime: Fully offline-capable operation
 - AI Inference: User's choice of local or cloud providers
-- Scaling: Resources scale with actual usage patterns
+- Scaling: Resources scale based on system workload and execution demand
 
 ---
 
