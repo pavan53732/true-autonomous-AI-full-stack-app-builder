@@ -2,13 +2,43 @@
 
 AstraBuild is a true **Full-Stack AI Builder** that can independently design, develop, and deploy complete web and mobile applications without requiring templates or manual coding.
 
+## System Boundary: Single-User Autonomous Architecture
+
+AstraBuild is a **strictly single-user autonomous system**.
+
+- No multi-user collaboration
+- No shared workspaces
+- No team management
+- No human role-based permission systems
+
+All coordination, permissions, and execution control exist **only at the AI agent level**, enforced through governance systems (Decision Locks, Tool Authority, Scope Boundaries).
+
+This is NOT a collaborative SaaS platform. It is a **single-operator autonomous software factory**.
+
 ## Core Architecture
+
+### Authority Model
+
+- **Project State Graph (PSG)** is the single source of truth
+- **Agents operate on PSG, not user prompts**
+- **User-provided intent is advisory, not authoritative**
+- **All actions must pass Governance Enforcement before execution**
+- **Governance Enforcement is the final authority on all state mutations**
+- **Users cannot directly trigger execution, bypass governance, or mutate system state**
+- **Agents cannot modify their own permissions, roles, or authority boundaries**
+- **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
+- **All user-provided intents are interpreted, not executed**
+
+Hierarchy of control:
+User-provided intent → Planning → PSG → Governance → Execution
+
+This ensures deterministic, conflict-free system evolution.
 
 ### 1. Intent & Product Design Engine
 
 The entry point of the system, responsible for converting high-level ideas into actionable development blueprints:
 
-- **Prompt Understanding Engine**: Interprets user intent and decomposes ideas into structured tasks.
+- **Prompt Understanding Engine**: Interprets user-provided intent and decomposes ideas into structured tasks.
 - **Requirement Extractor**: Automatically identifies features, user personas, API requirements, and database models.
 - **Architecture & API-First Design Engine**: Designs the system structure and formal API contracts (OpenAPI/GraphQL/gRPC) before code generation.
 - **Autonomous Data Modeling Engine**: Automatically designs schemas, handles multi-database persistence, and generates migrations.
@@ -36,6 +66,7 @@ Instead of agents reasoning on partial prompt context, they interact with the sh
 - Tracks architecture, tasks, dependencies, and runtime state
 - Prevents conflicting actions between agents
 - Enables long-running autonomous project evolution
+- **All writes to the Project State Graph must originate from validated agent actions and pass governance enforcement.**
 
 #### Subsystems
 
@@ -68,7 +99,11 @@ The Project State Graph is persisted using a graph database optimized for relati
 ---
 
 **Architecture Decision Locks**
-Critical architectural choices (tech stack, database type, service boundaries) are stored as immutable decision nodes. Agents cannot modify these nodes unless explicitly unlocked by governance policies or user override.
+
+Critical architectural choices (tech stack, database type, service boundaries) are stored as immutable decision nodes. Agents cannot modify these nodes unless explicitly unlocked by governance policies or explicit override action.
+
+- Explicit override actions are interpreted as high-priority intents and must pass governance validation before unlocking decision nodes.
+- All overrides are logged and validated through governance policies before application.
 
 ### 1.6 Autonomous Planning Loop (Mission Engine)
 
@@ -127,6 +162,35 @@ Validates mission results and updates the Project State Graph, triggering the ne
 
 All generated missions must pass validation through the Governance Enforcement Interface before execution.
 
+### Autonomous Execution Mode
+
+The system operates in two modes:
+
+1. **Assisted Mode**
+   - Missions are primarily initiated by user-provided intent
+   - Autonomous generation is reduced but not fully disabled
+
+2. **Autonomous Mode (Default)**
+   - System independently generates and executes missions
+   - User-provided intent is optional guidance
+
+Autonomous execution is bounded by governance policies, resource constraints, and safety thresholds.
+The system is never idle while improvement opportunities exist.
+The system does NOT stop after task completion. It continuously evolves the project.
+
+### Mission Visibility Interface
+
+The system exposes mission-level abstraction:
+
+- Active Missions
+- Scheduled Missions
+- Completed Missions
+- Priority Scores
+- Validation Status (Approved / Blocked)
+- Rejection Reason (if blocked by governance)
+
+This provides transparency without exposing internal planning complexity.
+
 ---
 
 
@@ -134,6 +198,7 @@ All generated missions must pass validation through the Governance Enforcement I
 
 The "Brain" that feeds agents the precise information needed for any given task:
 
+- **No Raw Prompt Leaks**: Raw user-provided prompts are never passed directly to agents; all inputs are normalized through PSG-derived context.
 - **Context Builder & Injector**: Dynamically assembles context by querying the Project State Graph for relevant code, architecture state, tasks, and dependencies.
 - **Mission Context Builder**: Generates contextual prompts for agents based on active missions and the global Project State Graph.
 - **Context Limit Manager**: Optimizes context windows to prevent agent hallucination and maximize reasoning quality.
@@ -196,7 +261,7 @@ Routes tasks to appropriate AI models based on reasoning complexity, latency con
 - **Global Task Queue**: A high-speed priority queue that manages task scheduling, persistence, and failure retries.
 - **Worker Manager**: Spawns ephemeral, sandboxed worker processes for each agent task, preventing memory leaks and runaway reasoning.
 - **Execution Stability Controller**: Maintains runtime stability by coordinating task concurrency, preventing deadlocks, and supervising worker lifecycle.
-- **Mission Execution Interface**: Accepts structured missions from the Mission Scheduler and converts them into task graphs for agent execution via the Task Graph Engine.
+- **Mission Execution Interface**: Accepts structured missions from the Mission Scheduler and converts them into task graphs for agent execution via the Task Graph Engine. All tasks derived from missions are revalidated by the Governance Enforcement Interface before execution.
 - **Agent Failure Supervisor**: Monitors worker health, detects stuck reasoning loops, and orchestrates task-level recovery.
 - **Observability Pipeline**: Captures telemetry (agent_id, tool_calls, execution traces, duration) and feeds signals into debugging, performance analysis, and the Autonomous Planning Loop.
 
@@ -283,6 +348,17 @@ Key capabilities:
 
 This layer sits between code mutation and verification to catch issues early in the development process.
 
+#### Simulation Output Interface
+
+Before applying any structural change, the system generates:
+
+- Impact analysis (dependencies affected)
+- Performance implications
+- Risk score (low / medium / high)
+- Rollback feasibility
+
+These results are exposed as a simplified “Impact Preview” before execution.
+
 ### 6. AI Quality Engineering & Production Self-Healing
 
 The system maintains its own quality through a continuous feedback loop and production-level monitoring:
@@ -363,7 +439,12 @@ AstraBuild maintains a cross-project knowledge graph containing reusable archite
 Ensures the generated system is maintainable and transparent:
 
 - **Documentation Generator**: Automatically produces user manuals, API references (Swagger/OpenAPI), and architecture diagrams.
-- **Project Explorer**: Interactive visual mapping of PSG-derived views for human review.
+- **Project Explorer (PSG Projection Layer)**:
+  Provides a simplified, human-readable view of the Project State Graph:
+  - Services, APIs, Databases, Components
+  - High-level dependencies (no raw graph exposure)
+  - Architecture structure visualization
+  - Decision lock visibility
 
 ### 9. Safety & Governance Layer
 
@@ -374,6 +455,19 @@ Prevents recursive failures and destructive actions:
 - **Execution Monitoring**: Real-time monitoring of agent behavior to ensure compliance with security boundaries.
 - **Dependency Abandonment Detection**: Automated alerts for packages with stagnant maintenance or critical lifespan decay.
 - **Supply Chain Provenance**: Cryptographic verification of the origin and integrity of every code byte and binary within the builder ecosystem.
+
+### Governance Transparency Layer
+
+This layer is a user-facing projection of the internal Governance Enforcement Interface.
+
+While internal governance is fully automated, AstraBuild exposes an abstracted visibility layer:
+
+- Decision rejection reasons (e.g., violates architecture constraint)
+- Blocked actions with explanations
+- Execution audit logs
+- Decision lock status (locked/unlocked)
+
+This ensures the user understands *why* actions occur or are prevented, without exposing internal complexity.
 
 ## Multi-Agent Topology Cluster Map
 
@@ -436,6 +530,10 @@ To manage **34 concurrent specialized agents** without chaos, AstraBuild organiz
 - **Runtime Stability Manager**: Oversees execution health, prevents agent starvation, and balances task concurrency.
 - **Agent Performance Monitor**: Tracks agent success rates, failure patterns, and patch quality. Routes critical tasks to high-performing agents and triggers retraining when performance degrades.
 
+Note:
+All roles defined above are **AI agent roles**, not human roles.
+There are no user role hierarchies, teams, or permission systems for humans.
+
 ## Key Features
 
 ### Live Preview Panel
@@ -446,7 +544,13 @@ To manage **34 concurrent specialized agents** without chaos, AstraBuild organiz
 
 ### Conversation & Session Management
 
-- **Conversation Thread Manager**: Maintains user interaction history, tracks session state, and manages multi-turn conversations.
+- **Directive Interface (Chat System)**:
+  Serves as an intent input interface (not a control surface).
+
+  Important:
+  - Chat does NOT directly control execution
+  - All inputs are processed through planning and governance layers
+  - System execution is driven by PSG state and mission scheduling, not user-provided intents
 - **Prompt History System**: Logs all prompts sent to agents for debugging, auditing, and improvement analysis.
 - **Session State Manager**: Persists user preferences, active project context, and conversation state across sessions.
 - **Notification System**: Event notifications for mission completions, failures, and required user interventions.
@@ -628,7 +732,7 @@ graph TD
 - **Authentication systems**: OAuth, JWT integration.
 - **Data encryption**: End-to-end encryption for storage and transit.
 - **Vulnerability scanning**: Continuous SAST/DAST auditing.
-- **Access control management**: Role-based agent permissions.
+- **Agent-Level Access Control**: Permissions enforced at AI agent level (not human users)
 
 ## Performance Optimization
 
@@ -704,5 +808,23 @@ Since AstraBuild uses internet-connected AI models for reasoning and code genera
 
 ---
 
-> [!IMPORTANT]
 > **Hybrid Evolution Strategy**: Global reasoning is performed using full-context architectural awareness, while code modifications are executed as precision patches through the AI Coding Engine. This ensures architectural purity while preventing the instability of full-project rewrites, allowing for safe, incremental growth in massive codebases.
+
+## UI Abstraction Principle
+
+The user interface exposes:
+
+- System state (abstracted)
+- Mission progress
+- Architecture overview
+- Governance feedback
+
+The UI intentionally hides:
+
+- Internal agent orchestration
+- Graph database structures
+- Context engineering mechanisms
+- Low-level execution pipelines
+
+Goal:
+Maximize usability while preserving architectural truth.
