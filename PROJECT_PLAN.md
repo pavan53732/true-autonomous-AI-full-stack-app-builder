@@ -20,7 +20,7 @@ This is NOT a collaborative SaaS platform. It is a **single-operator autonomous 
 ### Authority Model
 
 - **Project State Graph (PSG)** is the single source of truth
-- **Agents operate on PSG, not user prompts**
+- **Agents operate on PSG, not user-provided intent (normalized from prompts)**
 - **User-provided intent is advisory, not authoritative**
 - **All actions must pass Governance Enforcement before execution**
 - **Governance Enforcement is the final authority on all state mutations**
@@ -32,7 +32,7 @@ This is NOT a collaborative SaaS platform. It is a **single-operator autonomous 
 - **All user-provided intents are interpreted, not executed**
 
 Hierarchy of control:
-User-provided intent → Planning → PSG → Governance → Execution
+User-provided intent → Interaction Layer → Planning → PSG → Governance → Execution
 
 This ensures deterministic, conflict-free system evolution.
 
@@ -220,12 +220,12 @@ The "Brain" that feeds agents the precise information needed for any given task:
 
 ### 2.5 Interaction Intelligence Layer (Human ↔ System Alignment)
 
-Bridges the gap between user intent, visual state, and system execution by enabling deep, real-time interaction loops.
+Bridges the gap between user-provided intent, visual state, and system execution by enabling deep, real-time interaction loops.
 
 #### Core Capabilities
 
 - **Visual Intent Alignment Engine**:
-  Interprets user intent in the context of the current UI state.
+  Interprets user-provided intent in the context of the current UI state. Relies on the Visual State Interpreter (Section 5.3) for structured UI state extraction.
   - Captures UI snapshots from the Preview System
   - Analyzes layout, spacing, hierarchy, and visual structure
   - Maps vague intent (e.g., “make it cleaner”) to concrete UI transformations
@@ -241,7 +241,7 @@ Bridges the gap between user intent, visual state, and system execution by enabl
   without requiring full mission re-execution.
 
 - **Micro-Mission Executor**:
-  Handles ultra-small, low-risk mutations (UI tweaks, minor fixes) with minimal planning overhead.
+  Handles ultra-small, low-risk mutations (UI tweaks, minor fixes) with minimal planning overhead. Executes only micro-missions generated or validated by the Micro-Mission Generator (Section 1.6).
 
 - **Intent Clarification Engine**:
   Detects ambiguity in user-provided intent and generates structured interpretation options for refinement.
@@ -842,6 +842,8 @@ AstraBuild is designed to maximize computational efficiency and resource utiliza
 ---
 
 ### Global Code Intelligence Network - Integration Strategy
+
+This section extends the Global Code Intelligence Network defined in Section 7.
 
 **Decision:** Global Code Intelligence Network is **INCLUDED** as a core capability.
 
