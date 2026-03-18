@@ -30,11 +30,11 @@ The Control Plane is responsible for:
 
 ### Core Subsystems
 
-- Global Mission Coordinator
-- System State Synchronizer
-- Cross-Layer Event Router
-- Global Priority Arbiter
-- System Recovery Controller
+- Global Mission Coordinator (delegates to Mission Scheduler, does NOT execute)
+- System State Synchronizer (PSG consistency only)
+- Cross-Layer Event Router (global event bus routing only)
+- Global Priority Arbiter (conflict resolution across missions, not task scheduling)
+- System Recovery Controller (system-level failover only, not task-level retries)
 
 ## Cost-Neutrality Invariant
 
@@ -112,14 +112,24 @@ Instead of agents reasoning on partial prompt context, they interact with the sh
 
 #### Architecture Governance System
 
-A unified system ensuring architectural correctness across all stages:
+A centralized enforcement layer that ensures architectural correctness across all system phases.
 
-- Planning Verification Layer (pre-generation validation)
-- Architecture Integrity Model (invariant enforcement)
-- Architecture Validator (agent-level validation)
-- Drift Detection (post-change monitoring)
+This system does NOT perform reasoning. It enforces decisions produced by the Architecture Intelligence System.
 
-This system guarantees that architecture constraints remain consistent during planning, execution, mutation, and runtime evolution.
+#### Responsibilities
+
+- Enforce architectural invariants (via Architecture Integrity Model)
+- Validate all agent-generated changes against architecture rules
+- Block violations and trigger re-planning
+- Monitor architecture drift post-mutation
+- Enforce decision locks and system constraints
+
+#### Enforcement Points
+
+- Planning Verification Layer (pre-generation)
+- Governance Enforcement Interface (pre-execution)
+- Verification Agents (post-generation)
+- Drift Monitoring (post-deployment)
 
 #### Subsystems
 
@@ -543,6 +553,58 @@ These results are exposed as a simplified “Impact Preview” before execution.
 
 ### 5.3 Deterministic Execution & Replay System
 
+#### Code Quality Intelligence System
+
+A unified system responsible for structural, semantic, and maintainability analysis of the codebase.
+
+This system consolidates all quality-related analysis to avoid duplication across agents and verification layers.
+
+#### Capabilities
+
+- Cyclomatic complexity analysis
+- Code duplication detection
+- Dead code detection
+- Unused dependency detection
+- Code style and formatting validation
+- Refactoring suggestion generation
+- Codebase risk scoring
+- Quality trend tracking over time
+
+This system feeds:
+- Verification Cluster
+- Refactor Agent
+- Autonomous Planning Loop
+### 5.X Architecture Intelligence System
+
+A unified architectural reasoning system built on top of the Project State Graph that enables deep analysis, simulation, validation, and optimization of system architecture.
+
+This system is NOT a separate graph. It operates as a reasoning layer over PSG projections.
+
+#### Responsibilities
+
+- Construct architecture-level graph views (services, APIs, data flow, infrastructure, deployment topology)
+- Detect architecture patterns (monolith, microservices, event-driven, layered, clean architecture, etc.)
+- Validate architecture constraints and detect anti-patterns
+- Resolve architectural conflicts and redundancy
+- Perform architecture risk, complexity, and maintainability scoring
+- Simulate architecture behavior under load, failure, and scaling conditions
+- Analyze impact before architectural mutations
+- Track architecture drift and evolution over time
+- Generate architecture migration and refactoring plans
+- Maintain architecture knowledge graph and pattern library
+
+#### Internal Engines
+
+- Architecture Graph Builder (PSG projection)
+- Architecture Reasoning Engine
+- Architecture Pattern Detection Engine
+- Architecture Constraint Engine
+- Architecture Simulation Engine
+- Architecture Scoring Engine
+- Architecture Optimization Engine
+- Architecture Knowledge Interface
+
+
 To ensure full system reliability, debuggability, and reproducibility, AstraBuild enforces deterministic execution across all autonomous operations.
 
 #### Core Responsibilities
@@ -581,6 +643,26 @@ Replay execution restores PSG state in isolation using snapshot loading and does
 Allows inspection of system state at any point in execution history without mutating current state.
 
 ### 6. AI Quality Engineering & Production Self-Healing
+
+#### Runtime Intelligence System
+
+A unified runtime analysis system that processes execution signals and feeds debugging, optimization, and self-healing loops.
+
+#### Capabilities
+
+- Runtime trace analysis
+- Stack trace interpretation
+- Memory and resource usage analysis
+- API latency tracking
+- Crash pattern detection
+- Runtime anomaly detection
+- Dependency runtime tracking
+
+This system powers:
+- RCA Engine
+- Error Classification Engine
+- Autonomous Debugging Loop
+- Observability Pipeline
 
 The system maintains its own quality through a continuous feedback loop and production-level monitoring:
 
