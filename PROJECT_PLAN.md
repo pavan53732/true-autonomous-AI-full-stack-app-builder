@@ -101,6 +101,17 @@ The PSG manages the formal lifecycle of the project:
 IDEA → REQUIREMENTS_STRUCTURED → ARCHITECTURE_DEFINED → TASK_GRAPH_GENERATED → CODE_GENERATION → BUILD → TEST → DEBUG → STABLE → DEPLOYED
 Agents are restricted to operations allowed in the current lifecycle stage.
 
+**State Transition Validator**
+
+Enforces correctness of lifecycle progression:
+- Validates all transitions between lifecycle states
+- Prevents invalid or skipped transitions
+- Enforces preconditions before state advancement
+- Supports controlled state regression only via governance-approved rollback
+- Rejects partial or inconsistent state transitions
+
+All lifecycle transitions must pass validation before being committed to the Project State Graph.
+
 ---
 
 **Task Progress Graph**
@@ -116,6 +127,18 @@ Defines architectural invariants (e.g., frontend cannot directly access DB) and 
 
 **Persistent Graph Storage**
 The Project State Graph is persisted using a graph database optimized for relationship traversal. Storage layers include an In-Memory Graph Cache for fast agent queries, a Persistent Graph Store for long-term project state, and an Incremental Graph Update Engine for real-time synchronization with code changes.
+
+**PSG Transaction Model**
+
+All writes to the Project State Graph follow strict transactional guarantees:
+- **Isolation Level**: Serializable (no conflicting concurrent writes allowed)
+- **Concurrency Control**: Optimistic concurrency with pre-commit validation
+- **Write Validation**: All write-sets are validated against current graph state before commit
+- **Conflict Detection**: Conflicting mutations are rejected and re-planned
+- **Atomic Commit**: All graph mutations succeed or fail as a single unit
+- **Rollback Mechanism**: Automatic rollback on validation failure or conflict detection
+
+This ensures consistency during high-concurrency multi-agent execution.
 
 ---
 
@@ -186,6 +209,27 @@ Validates mission results and updates the Project State Graph, triggering the ne
 
 All generated missions must pass validation through the Governance Enforcement Interface before execution.
 
+**Goal Completion & Convergence Engine**
+
+Prevents infinite optimization loops and defines system completion boundaries:
+- Defines explicit completion criteria for missions and overall system state
+- Detects diminishing returns in optimization cycles
+- Identifies convergence across architecture, performance, and correctness
+- Terminates or pauses missions when goals are satisfied
+- Prevents unnecessary re-optimization of stable components
+
+Ensures autonomous execution remains purposeful and bounded.
+
+**Exploration vs Exploitation Controller**
+
+Balances innovation and stability:
+- Controls when to explore new architectural patterns
+- Prioritizes stable solutions in mature system areas
+- Allocates bounded exploration budget for experimentation
+- Prevents excessive architectural churn
+
+Ensures long-term system stability while enabling controlled innovation.
+
 ### Autonomous Execution Mode
 
 The system operates in two modes:
@@ -232,6 +276,17 @@ The "Brain" that feeds agents the precise information needed for any given task:
 - **Prompt Compiler**: Assembles final agent prompts by combining context, memory, system rules, governance policies, and task specifications into optimized prompt templates.
 - **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and context precision optimization. A/B tests prompt variants to identify highest-performing templates.
 - **Interaction Context Bridge**: Receives refined and disambiguated intent from the Interaction Intelligence Layer and transforms it into PSG-aligned contextual inputs for agent execution.
+
+**Hard Validation Layer (Anti-Hallucination Enforcement)**
+
+Prevents execution of unverifiable assumptions:
+- API existence validation before usage
+- Library/package verification against known registries
+- Schema validation before data interaction
+- Dependency resolution verification before execution
+- Unknown entities are rejected, not assumed
+
+Ensures zero hallucinated dependencies or APIs enter the system.
 
 - **Internal Mechanisms**:
   - **Context Orchestration**: Context compression, summarization encoding, and density-based priority ranking.
@@ -295,7 +350,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 - **Agent Skill Library**: Reusable capability modules for common operations (API generation, database migration, query optimization, deployment). Agents dynamically load skills instead of being retrained.
 
 - **Internal Mechanisms**:
-  - **Communication Bus**: Inter-agent message brokering, event broadcasting, and reliable message ordering.
+  - **Global Event & Messaging Bus**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
   - **Collaboration Consensus**: Multi-agent voting, negotiation protocols, and conflict resolution policies.
   - **Agent Lifecycle**: Dynamic spawning, cloning, and specialized role refinement including Backend Architect, Frontend Stylist, Security Auditor, Database Schema Designer, and Performance Optimizer.
   - **Agent Evolution Coordination**: Works with the Agent Evolution Engine to integrate newly discovered high-performing specializations into active agent populations.
@@ -312,6 +367,8 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 
 ### 4. Agent Runtime Engine (Factory OS)
 
+The Agent Runtime Engine operates under the authority of the Execution Runtime Control Plane, which owns all process creation, sandboxing, and runtime lifecycle management.
+
 The runtime environment responsible for the parallel execution, monitoring, and containment of the multi-agent workforce.
 
 #### Model Orchestration Layer
@@ -323,16 +380,18 @@ Routes tasks to appropriate AI models based on reasoning complexity, latency con
 - **Simulation Models**: Analysis models for impact prediction
 
 **Inference Scheduler**: Optimizes model inference operations through intelligent batching, token throughput optimization, and latency balancing across concurrent agent requests. Maximizes GPU utilization while maintaining stable and efficient inference throughput.
+- All model inference calls are executed under deterministic seed control when replay or validation mode is active.
 
 #### Core Components
 
 - **Task Graph Engine**: Converts structured plans and autonomous missions into dependency-aware execution DAGs.
 - **Global Task Queue**: A high-speed priority queue that manages task scheduling, persistence, and failure retries.
-- **Worker Manager**: Spawns ephemeral, sandboxed worker processes for each agent task, preventing memory leaks and runaway reasoning.
+- **Worker Manager**: Requests worker process creation via the Execution Runtime Control Plane and manages assigned worker lifecycles without direct process ownership.
 - **Execution Stability Controller**: Maintains runtime stability by coordinating task concurrency, preventing deadlocks, and supervising worker lifecycle.
 - **Mission Execution Interface**: Accepts structured missions from the Mission Scheduler and converts them into task graphs for agent execution via the Task Graph Engine. All tasks derived from missions are revalidated by the Governance Enforcement Interface before execution.
 - **Agent Failure Supervisor**: Monitors worker health, detects stuck reasoning loops, and orchestrates task-level recovery.
 - **Observability Pipeline**: Captures telemetry (agent_id, tool_calls, execution traces, duration) and feeds signals into debugging, performance analysis, and the Autonomous Planning Loop.
+- **Deterministic Execution Enforcer**: Ensures all agent executions, task scheduling, and tool invocations operate under deterministic constraints using controlled seeds and recorded execution context from the Deterministic Execution System.
 
 #### Tool Execution Layer
 
@@ -429,6 +488,45 @@ Before applying any structural change, the system generates:
 
 These results are exposed as a simplified “Impact Preview” before execution.
 
+### 5.3 Deterministic Execution & Replay System
+
+To ensure full system reliability, debuggability, and reproducibility, AstraBuild enforces deterministic execution across all autonomous operations.
+
+#### Core Responsibilities
+- Enable exact replay of any past execution
+- Guarantee deterministic system behavior under identical inputs
+- Provide time-travel debugging capabilities
+- Track complete execution lineage across missions and agents
+
+#### Subsystems
+
+**Execution Snapshot Engine**
+Captures full system snapshots including:
+- Project State Graph state (transaction-consistent snapshot)
+- Active mission state
+- Memory layer state
+- Runtime execution context
+
+All snapshots are taken at PSG transaction boundaries to ensure consistency and replay correctness.
+
+**Deterministic Seed Controller**
+Controls all sources of non-determinism:
+- Random number generation
+- Time-dependent operations
+- External input normalization
+
+**Execution Lineage Graph**
+Maintains a full trace of:
+- Mission → Task → Agent → Action → Result
+- Enables causal tracing across system evolution
+
+**Replay Engine**
+Re-executes past missions step-by-step using recorded snapshots and deterministic seeds to reproduce identical outcomes.
+Replay execution restores PSG state in isolation using snapshot loading and does NOT mutate current live state unless explicitly committed through governance validation.
+
+**Time-Travel Debugging Interface**
+Allows inspection of system state at any point in execution history without mutating current state.
+
 ### 6. AI Quality Engineering & Production Self-Healing
 
 The system maintains its own quality through a continuous feedback loop and production-level monitoring:
@@ -438,6 +536,15 @@ The system maintains its own quality through a continuous feedback loop and prod
 - **Runtime Telemetry & Self-Healing**: Connects to the deployed app's monitoring (logs, metrics) to detect and patch production anomalies automatically.
 - **Security & Compliance Automation**: Performs SAST/DAST scanning and ensures regulatory compliance with standards including GDPR, HIPAA, and OWASP Top 10 in every build.
 - **Verification Agents**: A specialized tier of high-reasoning audit agents that verify the output of peer agents (logic, security, styling) before any proposal is merged.
+
+**Truth Evaluation Layer**
+
+Establishes objective correctness validation:
+- Validates outputs against test results, specifications, and runtime behavior
+- Cross-verifies results using multiple independent signals
+- Calibrates confidence scores against actual correctness
+- Suppresses false positives from single-source validation
+- Ensures system decisions reflect real-world correctness, not internal assumptions
 
 - **Internal Mechanisms**:
     - **Iterative Reflection**: Self-verification loops and replanning logic based on intermediate validation states.
@@ -556,6 +663,35 @@ Prevents recursive failures and destructive actions:
   - Block action via Governance Enforcement Interface
   - Log violation in Governance Transparency Layer
   - Remove cost-related factors before re-execution
+
+**Failure Domain Isolation System**
+
+Defines strict isolation boundaries to prevent cascading failures:
+- **Agent Domain**: Individual agent failures are contained and recoverable without affecting other agents
+- **Mission Domain**: Failures within a mission do not impact unrelated missions
+- **PSG Domain**: Graph corruption is prevented via transaction rollback and validation
+- **Runtime Domain**: Process-level isolation prevents system-wide crashes
+
+Each domain defines:
+- containment boundary
+- rollback scope
+- recovery strategy
+
+This ensures system resilience under large-scale autonomous execution.
+
+**System Identity Lock**
+
+Defines immutable core system constraints:
+
+The following components cannot be modified by any agent:
+- Project State Graph schema
+- Governance Enforcement Interface
+- Execution authority hierarchy
+- Safety rules and validation layers
+
+Any attempt to mutate these components is automatically rejected.
+
+This prevents uncontrolled system self-modification and preserves architectural integrity.
 
 ### Governance Transparency Layer
 
@@ -893,7 +1029,7 @@ Since AstraBuild uses internet-connected AI models for reasoning and code genera
 2. **Real-Time Dependency Intelligence**: Current vulnerability data, deprecation notices, version compatibility
 3. **API Ecosystem Awareness**: Live API documentation, breaking changes, migration guides
 4. **Community Knowledge**: StackOverflow patterns, GitHub issue solutions, Reddit discussions
-5. **Competitive Edge**: System evolves with the broader software ecosystem, not just internal learnings
+5. **Competitive Edge**: System evolves with the broader software ecosystem, not just internal learningsa
 
 **Implementation Approach:**
 - **On-Demand Fetching**: AI agents retrieve relevant external patterns during mission execution
