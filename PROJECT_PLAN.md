@@ -1,6 +1,6 @@
 # AstraBuild: The Universal Autonomous Full-Stack Application Builder
 
-AstraBuild is a **Universal Autonomous Full-Stack Application Builder** that can independently design, develop, and deploy complete software systems across:
+AstraBuild is a **Universal Autonomous Full-Stack Application Builder** that must independently design, develop, and deploy complete software systems across:
 
 - Web applications
 - Windows native applications
@@ -42,6 +42,31 @@ The Control Plane is responsible for:
 - Cross-Layer Event Router (global event bus routing only)
 - Global Priority Arbiter (conflict resolution across missions, not task scheduling)
 - System Recovery Controller (system-level failover only, not task-level retries)
+
+### Control Plane Authority Constraint
+
+The Autonomous System Control Plane:
+
+- CANNOT schedule tasks
+- CANNOT assign agents
+- CANNOT execute missions
+
+It ONLY:
+
+- coordinates system-wide state
+- routes global events
+- enforces cross-layer consistency
+
+Scheduling authority is EXCLUSIVE:
+
+- Mission Scheduler → mission-level scheduling
+- Task Graph Engine → task-level structure
+- Autonomous Execution Engine → execution lifecycle
+
+Agent Orchestrator:
+
+- operates ONLY within Task Graph constraints
+- cannot override scheduler decisions
 
 **Note:** 
 - **Autonomous System Control Plane** → system-wide coordination (planning, governance, lifecycle)
@@ -93,45 +118,43 @@ The system is responsible ONLY for producing the highest-quality software outcom
 
 ## Core Architecture
 
-## System Scale & Capacity Model
+## System Capacity Constraints (Deterministic)
 
-### Agent Scale
+### Agent System
 
-- Logical agent roles: 34
-- Runtime agent instances:
-  - Typical: 20–60
-  - Peak: 100–300
+- logical_agent_roles = 34
+- max_active_agents = 128
+- max_micro_agents = 256
 
-### Task Scale
+### Task Graph
 
-- Max tasks per mission: 1,000+
-- Task graph depth: 10–20 levels
-- Parallel execution: 50–200 workers
+- max_tasks_per_mission = 1024
+- max_task_depth = 16
+- max_parallel_workers = 128
 
-### PSG Scale
+### PSG Constraints
 
-- Nodes: 10K–1M+
-- Edges: 50K–5M+
-- Query latency:
-  - hot: <50ms
-  - cold: <200ms
+- max_nodes = 1000000
+- max_edges = 5000000
+- max_query_latency_hot_ms = 50
+- max_query_latency_cold_ms = 200
 
-### Execution Scale
+### Execution Constraints
 
-- Worker processes: 10–200
-- Execution latency per task: 50ms–5s
+- max_worker_processes = 128
+- max_task_execution_time_ms = 5000
+- min_task_execution_time_ms = 50
 
-### Simulation Scale
+### Simulation Constraints
 
-- Parallel plan branches: 3–20
-- Simulation latency:
-  - fast: <2s
-  - deep: <10s
+- max_parallel_plan_branches = 16
+- max_simulation_time_ms = 10000
+- min_simulation_time_ms = 2000
 
-### Architecture Intelligence Scale
+### Architecture Intelligence
 
-- Graph projections: 5–10
-- Optimization iterations: 5–50
+- max_graph_projections = 8
+- max_optimization_iterations = 32
 
 ### Platform Abstraction & Target System Layer
 
@@ -228,27 +251,70 @@ User-provided intent
 → Interaction Layer
 → Planning
 → Agent Proposal
-→ Governance Enforcement Interface
-→ (if approved)
-→ Execution (Task Graph → Runtime → Tools)
-→ (on failure) → Agent Failure Supervisor → Replan via Mission Engine → Re-execution (through Governance)
-→ Mandatory Simulation Layer (pre-execution for non-trivial changes)
-→ Verification (post-execution)
+
+→ Governance Enforcement Interface (Proposal Validation)
+
+→ Change Simulation Layer (MANDATORY for non-trivial changes)
+    - operates on PSG snapshot
+    - produces impact analysis only (no mutation)
+
+→ Governance Enforcement Interface (Simulation Result Validation)
+
+→ Task Graph Engine
+→ Autonomous Execution Engine
+→ Tool Execution
+
+→ Verification Layer
+
+→ Governance Enforcement Interface (Final Pre-Commit Validation)
+
 → PSG Mutation Gateway
 → Project State Graph
 
-Note: Governance must be BEFORE execution.
+### Simulation Enforcement Rule (Strict)
 
-**Global Execution Invariant**
+Simulation is a non-executing analytical phase.
 
-No system component may:
-- execute actions
-- call tools
-- mutate state
+It:
+- cannot mutate PSG
+- cannot trigger execution
+- cannot bypass governance
 
-without passing through the Governance Enforcement Interface.
+All simulation outputs must pass Governance before execution is allowed.
 
-Any bypass is a system-level violation.
+No execution path must exist that bypasses simulation for non-trivial changes.
+
+Governance is enforced at ALL critical phases:
+
+- before simulation
+- after simulation
+- before execution
+- before PSG mutation
+
+No single-point enforcement exists.
+
+### Global Execution Invariant
+
+Execution Order (STRICT — NO DEVIATION):
+
+1. Agent Proposal
+2. Governance Enforcement Interface (Pre-Simulation)
+3. Change Simulation Layer
+4. Governance Enforcement Interface (Post-Simulation)
+5. Task Graph Engine
+6. Autonomous Execution Engine
+7. Tool Execution Layer
+8. Verification Layer
+9. Governance Enforcement Interface (Pre-Commit)
+10. PSG Mutation Gateway
+11. Project State Graph
+
+Rules:
+
+- No step must be skipped
+- No reordering is allowed
+- No parallel bypass paths exist
+- Execution is linearized and deterministic
 
 ### 1.5 Project State Graph & World Model Layer
 
@@ -401,9 +467,9 @@ Each task must include:
 #### Graph Properties
 
 - **Acyclic**: No circular dependencies allowed
-- **Serializable**: Execution order can be determined without conflicts
-- **Partitionable**: Graph can be divided for parallel execution
-- **Incremental**: New tasks can be added without disrupting existing execution
+- **Serializable**: Execution order must be determined without conflicts
+- **Partitionable**: Graph must be divided for parallel execution
+- **Incremental**: New tasks must be added without disrupting existing execution
 - **Versioned**: Graph state is tracked across execution cycles
 
 #### Execution Flow
@@ -423,13 +489,13 @@ Each task must include:
 - **Recovery Missions**: Autonomous re-planning for failed missions
 - **Deadlock Detection**: Cyclic dependency detection and resolution
 
-#### Performance Characteristics
+#### Execution Constraints
 
-- **O(n log n)** task scheduling complexity
-- **O(1)** task execution isolation
-- **O(m)** validation overhead where m = validation rules
-- **O(k)** rollback cost where k = affected tasks
-- **O(p)** parallel execution where p = available workers
+- scheduling_strategy = priority_ordered_queue
+- execution_model = deterministic
+- rollback_scope = task_level
+- retry_limit_per_task = 3
+- deadlock_resolution_strategy = abort_lowest_priority_task
 
 #### Integration Points
 
@@ -444,7 +510,7 @@ This formal model ensures:
 - **Reliability**: Failure handling and recovery mechanisms
 - **Performance**: Efficient scheduling and parallel execution
 - **Observability**: Complete execution visibility
-- **Learning**: Continuous improvement from execution outcomes
+- **Learning**: Deterministic improvement from execution outcomes
 
 ---
 
@@ -650,7 +716,7 @@ Generates fine-grained tasks derived from active missions or real-time interacti
 Ensures bounded autonomous execution.
 
 **Autonomous Feedback Loop**
-Validates mission results and updates the Project State Graph, triggering the next cycle of improvement missions to enable continuous, self-driven evolution.
+Validates mission results and updates the Project State Graph, triggering the next cycle of improvement missions to enable deterministic, self-driven evolution.
 
 All generated missions must pass validation through the Governance Enforcement Interface before execution.
 
@@ -726,7 +792,7 @@ The "Brain" that feeds agents the precise information needed for any given task:
 
 #### Anti-Hallucination Enforcement Rule
 
-No entity may be:
+No entity must be:
 
 - assumed
 - inferred
@@ -763,6 +829,25 @@ Ensures zero hallucinated dependencies, APIs, or graph entities enter the system
 
 ### 2.5 Interaction Intelligence Layer (Human ↔ System Alignment)
 
+#### Interaction Layer Authority Constraint
+
+The Interaction Intelligence Layer:
+
+- transforms raw user input into structured intent
+
+It CANNOT:
+
+- execute actions
+- generate proposals
+- mutate PSG
+- bypass planning
+
+Output:
+
+- normalized intent ONLY
+
+All outputs must pass through Planning Engine.
+
 Bridges the gap between user-provided intent, visual state, and system execution by enabling deep, real-time interaction loops.
 
 #### Core Capabilities
@@ -798,8 +883,8 @@ Bridges the gap between user-provided intent, visual state, and system execution
 
 - **Decision Confidence Model**:
   Attaches confidence scores and risk levels to all system actions:
-  - Confidence score (0–1)
-  - Risk level (low / medium / high)
+  - confidence_score ∈ {0,1}
+  - risk_level ∈ {0,1,2}
   - Rollback availability
 
 - **Visual-to-PSG Consistency Enforcement**:
@@ -820,10 +905,40 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 - **Internal Mechanisms**:
 - **Global Event & Messaging Bus (implemented via Control Plane Event Router)**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
 - Event messages cannot trigger execution directly.
-- All execution-triggering actions derived from events must pass through:
-→ Governance Enforcement Interface
-→ Task Graph Engine
-- Precludes indirect governance bypass via messaging.
+
+Event-to-Execution Constraint:
+
+Events must:
+- update context
+- trigger re-evaluation in planning
+
+Events CANNOT:
+- create missions directly
+- generate executable proposals
+- bypass agent proposal stage
+
+All event-derived actions must follow:
+
+Event Flow (STRICT):
+
+Event
+→ Planning Engine
+→ Agent Proposal
+→ Governance Enforcement Interface (Pre-Simulation)
+→ Change Simulation Layer
+→ Governance Enforcement Interface (Post-Simulation)
+→ Execution Pipeline
+
+No direct or implicit execution paths allowed from events.
+
+Additional constraint:
+
+Events cannot trigger recursive autonomous loops.
+
+Any event-triggered planning must:
+- be bounded
+- respect mission limits
+- pass Mission Scheduler approval
   - **Agent Communication Rules**:
     - Agents cannot share private memory directly
     - All communication must go through:
@@ -831,7 +946,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
       → PSG (state)
     - Messages must be: typed, logged, replayable
   - **Collaboration Consensus**: Multi-agent voting, negotiation protocols, and conflict resolution policies.
-  - **Agent Lifecycle**: Dynamic spawning, cloning, and specialized role refinement including Backend Architect, Frontend Stylist, Security Auditor, Database Schema Designer, and Performance Optimizer.
+  - **Agent Lifecycle**: Rule-based spawning, cloning, and specialized role refinement including Backend Architect, Frontend Stylist, Security Auditor, Database Schema Designer, and Performance Optimizer.
   - **Agent Evolution Coordination**: Works with the Agent Evolution Engine to integrate newly discovered high-performing specializations into active agent populations.
   - **Governance Security**: Execution authority enforcement, role boundary auditing, and decision locks.
   - **Agent Swarm Coordination**: Protocols for orchestrating hundreds of micro-agents for high-concurrency atomic edits across massive directory structures.
@@ -850,7 +965,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 To prevent uncontrolled agent explosion:
 
 - Maximum concurrent micro-agent limits
-- Adaptive scaling based on task complexity
+- Fixed-policy scaling based on task complexity
 - Hierarchical swarm coordination (leader agents)
 - Automatic consolidation of completed micro-agents
 
@@ -885,13 +1000,35 @@ Rules:
 - Planning systems do NOT execute
 - Control Plane does NOT execute
 
+#### Execution Ownership Rule
+
+- Task Graph Engine:
+  defines execution structure ONLY
+
+- Autonomous Execution Engine:
+  owns execution lifecycle (start → completion)
+
+- Execution Runtime Control Plane:
+  owns process infrastructure ONLY
+
+- Worker Manager:
+  coordinates execution requests, does NOT execute
+
+Single execution authority:
+
+→ Autonomous Execution Engine
+
 Execution flow:
 
-Agent Proposal  
-→ Governance Enforcement Interface  
-→ Autonomous Execution Engine  
-→ Tool Invocation  
-→ Result Capture  
+Agent Proposal
+→ Governance Enforcement Interface (Pre-Simulation)
+→ Change Simulation Layer
+→ Governance Enforcement Interface (Post-Simulation)
+→ Autonomous Execution Engine
+→ Tool Invocation
+→ Verification Layer
+→ Governance Enforcement Interface (Pre-Commit)
+→ PSG Mutation Gateway
 
 Responsibilities:
 
@@ -920,7 +1057,7 @@ Routes tasks to appropriate AI models based on reasoning complexity, latency con
 - **Verification Models**: Deterministic models for validation tasks
 - **Simulation Models**: Analysis models for impact prediction
 
-**Inference Scheduler**: Optimizes model inference operations through intelligent batching, token throughput optimization, and latency balancing across concurrent agent requests. Maximizes GPU utilization while maintaining stable and efficient inference throughput.
+**Inference Scheduler**: Optimizes model inference operations through rule-based batching, token throughput optimization, and latency balancing across concurrent agent requests. Maximizes GPU utilization while maintaining stable and efficient inference throughput.
 - All model inference calls are executed under deterministic seed control when replay or validation mode is active.
 
 #### Model Routing Policy
@@ -951,7 +1088,22 @@ Each task must include:
 
 All execution, telemetry, and mutations must reference task_id.
 
-- **Global Task Queue**: A high-speed priority queue that manages task scheduling, persistence, and failure retries.
+- **Global Task Queue**:
+
+Maintains ordered task execution based on priorities defined by:
+
+- Task Graph Engine
+- Mission Scheduler
+
+Responsibilities:
+
+- task buffering
+- priority-based dequeueing
+- retry queue management
+
+STRICT:
+
+- does NOT perform scheduling decisions
 - **Worker Manager**: Requests worker process creation via the Execution Runtime Control Plane and manages assigned worker lifecycles without direct process ownership.
 
 Note:
@@ -1008,7 +1160,7 @@ Responsibilities include:
 This ensures stable operation when large numbers of agents run simultaneously.
 
 - **Internal Mechanisms**:
-  - **Parallelism Engine**: Worker pool management and dynamic task coordination.
+  - **Parallelism Engine**: Worker pool management and rule-based task coordination.
   - **Context Isolation**: Precision-context provisioning for workers to maximize speed and minimize hallucination.
   - **Incremental Execution Mode**: Supports fine-grained execution cycles for micro-missions without triggering full task graph recomputation.
   - **Failure Handling**: Staging of retries and automated debugging hand-off for crashed tasks.
@@ -1077,16 +1229,16 @@ Key capabilities:
 - **Architecture Pattern Testing**: Evaluates alternative component arrangements and dependency structures via the Architecture Optimization Interface
 - **External Pattern Validation**: Cross-references proposed patterns against Global Code Intelligence Network to validate alignment with current community best practices
 
-This layer sits between code mutation and verification to catch issues early in the development process.
+This layer sits before execution and before any PSG mutation to ensure all non-trivial changes are validated prior to execution.
 
 #### Simulation Output Interface
 
-Before applying any structural change, the system generates:
+Outputs:
 
-- Impact analysis (dependencies affected)
-- Performance implications
-- Risk score (low / medium / high)
-- Rollback feasibility
+- dependency_impact_count (integer)
+- performance_delta_ms (integer)
+- risk_level ∈ {0,1,2}
+- rollback_possible ∈ {0,1}
 
 These results are exposed as a simplified “Impact Preview” before execution.
 
@@ -1286,12 +1438,21 @@ reactive debugging → predictive reasoning
 
 #### Multi-Objective Optimization Engine
 
-Computes Pareto-optimal solutions across:
-- performance
-- reliability
-- architectural integrity
+Inputs:
 
-No cost dimension allowed
+- performance_score
+- reliability_score
+- architectural_integrity_score
+
+Output:
+
+- selected_solution_id
+
+Selection Rule:
+
+- maximize architectural_integrity_score
+- if equal → maximize reliability_score
+- if equal → maximize performance_score
 
 #### Tradeoff Analyzer
 
@@ -1378,7 +1539,7 @@ This system powers:
 - Consumes signals from Observability Pipeline
 - Feeds outputs into RCA Engine, Debug Loop, and Planning Loop
 
-The system maintains its own quality through a continuous feedback loop and production-level monitoring:
+The system maintains its own quality through a deterministic feedback loop and production-level monitoring:
 
 - **Test Generation & Management Engine**: Automatically writes unit, integration, and E2E tests based on requirements and code structure.
 - **Autonomous Debugging Loop**: The core "Self-Correction" cycle (Execute-Detect-Analyze-Repair).
@@ -1425,7 +1586,7 @@ Establishes objective correctness validation:
 #### 6.5 Memory, Learning & Safety
 
 - **Operational Memory Store**: Stores debugging memory, reasoning cache, and runtime learning to maximize repair speed and accuracy.
-- **Safety Safeguards**: Implements strict retry thresholds (configured to a maximum of 20 attempts per task), automatic rollbacks on detected failure loops, and sandboxed execution boundaries to prevent recursive infrastructure damage.
+- **Safety Safeguards**: Implements strict retry thresholds (retry_limit_per_task = 20), automatic rollbacks on detected failure loops, and sandboxed execution boundaries to prevent recursive infrastructure damage.
 
 ### 7. Memory, Knowledge & Meta-Learning Layer
 
@@ -1436,7 +1597,31 @@ Ensures long-term context, consistency, and absolute system optimization:
 - **Semantic Knowledge Base**: An internal library of secure patterns, best practices, and performance standards.
 - **Meta-Learning Engine**: Analyzes patterns across multiple projects to improve code generation quality and pre-emptively apply safeguards.
 - **Agent Evolution Engine**: Automatically discovers and evolves high-performing agent specializations through execution analysis. Generates new skill modules from successful mission patterns and benchmarks agent capabilities against performance metrics.
-- **Operational Memory Store Integration**: Debugging traces and runtime learnings are stored as auxiliary memory. Operational Memory is non-authoritative and exists outside the Project State Graph. When persistence to World State Memory is required, all writes must pass through the Governance Enforcement Interface; direct mutation of the Project State Graph is not permitted.
+- **Operational Memory Store Integration**:
+
+Operational Memory stores debugging traces and runtime learnings as auxiliary, non-authoritative data.
+
+STRICT PROHIBITIONS:
+
+- Memory cannot initiate mutations
+- Memory cannot propose changes
+- Memory cannot trigger execution
+- Memory cannot write to PSG directly or indirectly
+
+ONLY valid mutation path:
+
+Agent Proposal
+→ Governance Enforcement Interface
+→ PSG Mutation Gateway
+→ Project State Graph
+
+Memory usage constraint:
+
+- Memory must be injected into agent context
+- Agents must generate proposals based on memory
+- All proposals must pass governance
+
+Memory is READ-ONLY influence, NEVER a mutation source.
 
 **Memory Trust Model**
 
@@ -1444,7 +1629,7 @@ Ensures long-term context, consistency, and absolute system optimization:
 
 Each memory entry includes:
 
-- trust_score (0–1)
+- trust_score ∈ {0,1}
 - timestamp
 - usage frequency
 
@@ -1454,7 +1639,8 @@ Policies:
 - downgrade if contradicted by PSG
 - upgrade if repeatedly validated
 
-Low-trust memory cannot influence decisions.
+IF trust_score = 0 → memory is ignored
+IF trust_score = 1 → memory is allowed as context input
 
 - Memory is non-authoritative
 - Must be validated against PSG before use
@@ -1547,7 +1733,18 @@ Prevents recursive failures and destructive actions:
 - **Execution Monitoring**: Real-time monitoring of agent behavior to ensure compliance with security boundaries.
 - **Dependency Abandonment Detection**: Automated alerts for packages with stagnant maintenance or critical lifespan decay.
 - **Supply Chain Provenance**: Cryptographic verification of the origin and integrity of every code byte and binary within the builder ecosystem.
-- **Micro-Mutation Guard**: Applies lightweight governance validation for low-risk micro-missions to enable high-speed iteration without compromising system integrity.
+- **Micro-Mutation Guard**:
+
+Micro-missions use the SAME Governance Enforcement Interface.
+
+Allowed:
+- reduced validation scope based on change locality
+
+Not allowed:
+- skipping validators
+- bypassing governance layers
+
+No alternate or lightweight governance system exists.
 - **Cost Contamination Detector**:
   Detects and blocks reintroduction of cost-related logic across planning, reasoning, scoring, routing, and telemetry.
 
@@ -1568,6 +1765,32 @@ Prevents recursive failures and destructive actions:
   - Remove cost-related factors before re-execution
 
 #### Governance Enforcement Interface (Execution Gate)
+
+Validates every action before execution:
+
+Checks include:
+- Architecture constraint validation
+- Decision lock enforcement
+- Scope boundary enforcement
+- Tool permission validation
+- Anti-hallucination validation
+- Cost contamination detection
+
+### Governance Ordering Guarantee
+
+Governance Enforcement Interface operates at THREE mandatory checkpoints:
+
+1. Pre-Simulation (proposal validation)
+2. Post-Simulation (impact validation)
+3. Pre-Commit (final mutation validation)
+
+No action must:
+
+- execute
+- mutate PSG
+- call tools
+
+without passing ALL required governance checkpoints.
 
 #### Governance Modularity Constraint
 
@@ -1594,19 +1817,22 @@ All optimization must preserve:
 - reasoning depth
 - architectural quality
 
-Each module produces a binary decision.
+Each validator returns:
 
-Final approval = AND(all validators)
+- decision ∈ {0,1}
 
-Validates every action before execution:
+Final approval rule:
 
-Checks include:
-- Architecture constraint validation
-- Decision lock enforcement
-- Scope boundary enforcement
-- Tool permission validation
-- Anti-hallucination validation
-- Cost contamination detection
+IF
+  architecture_validator = 1 AND
+  tool_permission_validator = 1 AND
+  scope_validator = 1 AND
+  hallucination_validator = 1 AND
+  cost_validator = 1
+THEN
+  approval = 1
+ELSE
+  approval = 0
 
 Only approved actions proceed to execution.
 
@@ -1688,15 +1914,35 @@ It generates and evaluates multiple alternative futures before execution.
 - Based on constraint violations and risk thresholds
 
 **Expected Outcome Scorer**
-- Scores each plan across:
-  - correctness
-  - architectural integrity
-  - performance
-  - reliability
+
+Each plan produces:
+
+- correctness_score (0 or 1)
+- integrity_score (0–1 normalized)
+- reliability_score (0–1 normalized)
+- performance_score (0–1 normalized)
+
+Selection:
+
+- discard if correctness_score = 0
+- select highest integrity_score
+- tie-breaker: reliability_score
+- final tie-breaker: performance_score
 
 **Uncertainty Propagation Engine**
-- Tracks uncertainty across planning steps
-- Penalizes unstable or high-variance plans
+
+Each plan maintains:
+
+- uncertainty_score (0–1)
+
+Rule:
+
+- plans with uncertainty_score > 0.2 are discarded
+
+Propagation:
+
+- uncertainty accumulates across planning steps
+- final uncertainty must be ≤ 0.2 for execution eligibility
 
 Only the highest-ranked plan is selected for execution.
 
@@ -1711,8 +1957,8 @@ To manage **34 logical agent roles (expanded into ~42–48 executable agent inst
 
 Result:
 
-- Logical roles: 34
-- Actual concurrent agents: ~40–80 depending on workload
+- logical_roles = 34
+- max_concurrent_agents = 128
 
 #### Agent Instantiation Model
 
@@ -1720,7 +1966,7 @@ The system defines **logical roles**, not fixed agent instances.
 
 At runtime:
 
-- Each logical role may spawn multiple agent instances
+- Each logical role must spawn multiple agent instances
 - Composite roles expand into specialized sub-agents
 
 Examples:
@@ -1742,7 +1988,7 @@ Examples:
 - **Intent Interpreter**: Converts natural language into structured mission goals.
 - **Product Planner**: Generates and maintains the feature specification.
 - **Architecture Planner**: Designs high-level system structure and boundaries.
-- **Task Decomposer**: Performs hierarchical task breakdown: Epic → Feature → Task → Atomic Action. This agent handles both initial decomposition during intent analysis and dynamic refinement during execution.
+- **Task Decomposer**: Performs hierarchical task breakdown: Epic → Feature → Task → Atomic Action. This agent handles both initial decomposition during intent analysis and rule-based refinement during execution.
 - **Constraint Solver**: Verifies architectural feasibility and dependency safety.
 
 ### 2. Architecture & Design Cluster (5 Agents)
@@ -1788,7 +2034,24 @@ Examples:
 
 ### 7. Governance & Control Cluster (5 Agents)
 
-- **Agent Orchestrator**: High-level scheduler that prevents task collisions.
+- **Agent Orchestrator**:
+
+Coordinates agent execution within constraints defined by:
+
+- Mission Scheduler (mission-level scheduling)
+- Task Graph Engine (task structure)
+
+Responsibilities:
+
+- prevents agent-level collisions
+- manages execution coordination signals
+- enforces agent concurrency limits
+
+STRICT:
+
+- does NOT schedule missions
+- does NOT schedule tasks
+- does NOT override Task Graph
 - **Context Manager**: Controls the "visibility window" for every active agent.
 - **Decision Governor**: Validates every agent proposal against architectural locks.
 - **Runtime Stability Manager**: Oversees execution health, prevents agent starvation, and balances task concurrency.
@@ -1839,7 +2102,7 @@ Apple platforms (macOS/iOS) are intentionally excluded in the current system sco
 ### No Templates Required
 
 - Pure AI-generated code from requirements.
-- **Dynamic architecture planning**.
+- **Rule-based architecture planning**.
 - **Self-improving code generation**.
 
 ## Technical Stack
@@ -1918,7 +2181,7 @@ The preview system is not just a viewer; it is a **Feedback Sensor Network** tha
 #### 5.1 Infrastructure & Connectivity
 
 - **Runtime Launcher**: Detects environment (npm, yarn, pip, go mod, cargo, or maven), installs dependencies, and manages the application process.
-- **Dynamic Port Manager**: Allocates free ports and maps internal runtime ports to external preview URLs to prevent collisions.
+- **Rule-based Port Manager**: Allocates free ports and maps internal runtime ports to external preview URLs to prevent collisions.
 - **Gateway Proxy Server**: Handles HTTP/WebSocket forwarding, header rewriting, and session management between the agent and the app.
 - **Readiness Detector**: Uses log parsing and health-checks to signal exactly when the dev server is ready for the AI to observe.
 
@@ -1946,13 +2209,13 @@ The preview system is not just a viewer; it is a **Feedback Sensor Network** tha
 - **Container Builder**: Internal Docker-less image generation.
 - **Local Cloud Runtime**: Micro-service orchestration for testing scale.
 - **Database Provisioning**: Self-managed instances of PostgreSQL, MongoDB, and Redis.
-- **Execution Runtime Control Plane**: A central orchestration layer that manages application processes, runtime containers, sandbox environments, dynamic port allocations, and automatic crash recovery.
+- **Execution Runtime Control Plane**: A central orchestration layer that manages application processes, runtime containers, sandbox environments, rule-based port allocations, and automatic crash recovery.
 
 ## Self-Contained Operation
 
 AstraBuild is designed for "Zero-Dependency" operation. Unlike traditional builders that rely on the user's local machine environment, AstraBuild bundles its entire system:
 
-- **Offline Capable**: Once downloaded, it can build and test apps without an internet connection (using local LLMs and internal registries).
+- **Offline Capable**: Once downloaded, it must build and test apps without an internet connection (using local LLMs and internal registries).
 - **Environment Parity**: The build environment is identical across all installations, eliminating "it works on my machine" issues.
 - **Portable Backends**: Generated applications include their own slimmed-down runtimes for easy portability.
 
@@ -1970,21 +2233,31 @@ AstraBuild is designed for "Zero-Dependency" operation. Unlike traditional build
 
 ```mermaid
 graph TD
-    User --> Interaction[Interaction Intelligence Layer]
+    User --> Interaction[Interaction Layer]
 
-    Interaction --> Planning[Intent & Product Design Engine]
+    Interaction --> Planning[Planning Engine]
 
-    Planning --> Proposal[Agent Proposals]
+    Planning --> Proposal[Agent Proposal]
 
-    Proposal --> Governance[Governance Enforcement Interface]
+    Proposal --> Gov1[Governance (Pre-Simulation)]
 
-    Governance --> Execution[Autonomous Execution Engine]
+    Gov1 --> Simulation[Change Simulation Layer]
+
+    Simulation --> Gov2[Governance (Post-Simulation)]
+
+    Gov2 --> TaskGraph[Task Graph Engine]
+
+    TaskGraph --> Execution[Autonomous Execution Engine]
 
     Execution --> Tools[Tool Execution Layer]
 
-    Tools --> Verification[Quality Engineering]
+    Tools --> Verification[Verification Layer]
 
-    Verification --> PSG[Project State Graph]
+    Verification --> Gov3[Governance (Pre-Commit)]
+
+    Gov3 --> PSGGateway[PSG Mutation Gateway]
+
+    PSGGateway --> PSG[Project State Graph]
 
     PSG --> Planning
 ```
@@ -1993,14 +2266,14 @@ graph TD
 
 - **Authentication systems**: OAuth, JWT integration.
 - **Data encryption**: End-to-end encryption for storage and transit.
-- **Vulnerability scanning**: Continuous SAST/DAST auditing.
+- **Vulnerability scanning**: Deterministic SAST/DAST auditing.
 - **Agent-Level Access Control**: Permissions enforced at AI agent level (not human users)
 
 ## Performance Optimization
 
 - **Code minification**: Automated bundle optimization.
 - **Bundle analysis**: Structural dependency auditing.
-- **Caching strategies**: Intelligent layer-based caching.
+- **Caching strategies**: Rule-based layer-based caching.
 - **Load balancing**: Automated service traffic management.
 
 ## Rationale for Autonomous-First Design
@@ -2026,7 +2299,7 @@ AstraBuild is designed to maximize execution stability and system throughput:
 - **Local-First Execution**: All build processes, testing, and deployment run locally without external dependencies
 - **Deterministic Design Strategy**: Simulation-guided optimization prevents unnecessary iteration cycles
 - **Execution-Based Learning**: Agents improve through real mission success rather than production experimentation
-- **Resource Scheduling**: Dynamic GPU/CPU allocation and agent concurrency control ensure stable system operation and maximum system throughput
+- **Resource Scheduling**: Rule-based GPU/CPU allocation and agent concurrency control ensure stable system operation and maximum system throughput
 
 **System Execution Targets:**
 - Development: Self-contained installation
@@ -2155,7 +2428,7 @@ The enhanced AstraBuild system demonstrates:
 - **Autonomous Intelligence**: Advanced planning, reasoning, and optimization capabilities
 - **Security & Governance**: Comprehensive modular governance and anti-hallucination enforcement
 - **Operational Efficiency**: Optimized execution, simulation separation, and resource management
-- **Learning & Evolution**: Cross-project knowledge transfer and continuous improvement
+- **Learning & Evolution**: Cross-project knowledge transfer and deterministic improvement
 - **Production Readiness**: All safety, security, and reliability requirements met
 
 The system architecture is complete and internally consistent.
