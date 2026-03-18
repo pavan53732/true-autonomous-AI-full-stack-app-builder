@@ -450,7 +450,11 @@ Routes tasks to appropriate AI models based on reasoning complexity, latency con
 - **Task Graph Engine**: Converts structured plans and autonomous missions into dependency-aware execution DAGs.
 - **Global Task Queue**: A high-speed priority queue that manages task scheduling, persistence, and failure retries.
 - **Worker Manager**: Requests worker process creation via the Execution Runtime Control Plane and manages assigned worker lifecycles without direct process ownership.
-- **Execution Stability Controller**: Maintains runtime stability by coordinating task concurrency, preventing deadlocks, and supervising worker lifecycle.
+  - **Execution Stability Controller (coordination layer only)**:
+    - Prevents deadlocks
+    - Monitors execution health signals
+    - Delegates recovery to Agent Failure Supervisor
+    - Does NOT manage workers directly
 - **Mission Execution Interface**: Accepts structured missions from the Mission Scheduler and converts them into task graphs for agent execution via the Task Graph Engine. All tasks derived from missions are revalidated by the Governance Enforcement Interface before execution.
 - **Agent Failure Supervisor**: Monitors worker health, detects stuck reasoning loops, and orchestrates task-level recovery.
 - **Observability Pipeline**: Captures telemetry (agent_id, tool_calls, execution traces, duration) and feeds signals into debugging, performance analysis, and the Autonomous Planning Loop.
