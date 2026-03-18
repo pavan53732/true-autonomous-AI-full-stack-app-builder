@@ -99,15 +99,19 @@ The entry point of the system, responsible for converting high-level ideas into 
 - **Reasoning Cache Engine**: Stores and retrieves previous state-traversals to optimize latency and reduce repeated reasoning cycles.
 - **Reproducibility Engine**: Enforces deterministic reasoning traces to ensure architectural consistency across identical mission profiles.
 
-#### Execution Authority Chain
+#### Unified Execution Flow (Authoritative)
 
-- Mission Definition → Autonomous Planning Loop
-- Mission Scheduling → Mission Scheduler
-- Task Decomposition → Task Graph Engine
-- Task Execution → Agent Runtime Engine
-- State Mutation → Governance Enforcement Interface → PSG
+Agent Proposal
+→ Governance Enforcement Interface (decision validation + tool validation)
+→ (if approved)
+→ Task Graph Engine (scheduling)
+→ Agent Runtime Execution
+→ Tool Authority Gateway (for tool calls)
+→ Result Validation (Simulation + Verification)
+→ PSG Mutation Gateway
+→ PSG
 
-No component may bypass this chain.
+**Critical Rule:** Governance must be BEFORE execution, not after. No component may bypass this chain.
 
 ### 1.5 Project State Graph & World Model Layer
 
@@ -239,6 +243,36 @@ Guarantees:
 - Deterministic reasoning context
 - Conflict detection during commit phase
 
+#### Logical PSG Decomposition
+
+The PSG maintains strict layering to prevent overload:
+
+**PSG (Authoritative Core)**
+- Architecture components
+- APIs and contracts
+- System decisions (locks)
+- Component relationships (DEPENDS_ON, IMPLEMENTS, CALLS, MODIFIES)
+
+**Execution Graph (Separate)**
+- Tasks and task states
+- Execution lineage
+- Mission progress tracking
+- Agent assignments
+
+**Runtime State Store (Separate)**
+- Logs and telemetry
+- Performance metrics
+- Runtime signals
+- Debugging observations
+
+**Memory Layer (Separate)**
+- Learning history
+- Pattern library
+- Cross-project knowledge
+- Agent evolution data
+
+All layers synchronize via PSG Mutation Gateway but maintain separate storage.
+
 ---
 
 **Architecture Decision Locks**
@@ -251,6 +285,17 @@ Critical architectural choices (tech stack, database type, service boundaries) a
 ### 1.6 Autonomous Planning Loop (Mission Engine)
 
 The Autonomous Planning Loop enables AstraBuild to continuously improve projects even when no new user prompts are provided. Instead of stopping after task completion, the system analyzes the Project State Graph to detect improvement opportunities and generates structured missions for autonomous execution.
+
+#### Global Objective Function
+
+All planning and optimization must align with:
+
+- **Correctness** (hard constraint)
+- **Architectural integrity** (hard constraint)
+- **Reliability** (hard constraint)
+- **Performance** (soft optimization)
+
+Tradeoffs must be resolved via weighted scoring under these constraints.
 
 #### Core Responsibilities
 
@@ -396,7 +441,12 @@ Prevents execution of unverifiable assumptions:
 - Dependency resolution verification before execution
 - Unknown entities are rejected, not assumed
 
-Ensures zero hallucinated dependencies or APIs enter the system.
+**PSG Query Validator**
+- All graph queries must validate node/edge existence
+- Invalid queries are rejected
+- No inferred entities allowed
+
+Ensures zero hallucinated dependencies, APIs, or graph entities enter the system.
 
 - **Internal Mechanisms**:
   - **Context Orchestration**: Context compression, summarization encoding, and density-based priority ranking.
@@ -461,6 +511,12 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 
 - **Internal Mechanisms**:
   - **Global Event & Messaging Bus (implemented via Control Plane Event Router)**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
+  - **Agent Communication Rules**:
+    - Agents cannot share private memory directly
+    - All communication must go through:
+      → Event Bus (structured messages)
+      → PSG (state)
+    - Messages must be: typed, logged, replayable
   - **Collaboration Consensus**: Multi-agent voting, negotiation protocols, and conflict resolution policies.
   - **Agent Lifecycle**: Dynamic spawning, cloning, and specialized role refinement including Backend Architect, Frontend Stylist, Security Auditor, Database Schema Designer, and Performance Optimizer.
   - **Agent Evolution Coordination**: Works with the Agent Evolution Engine to integrate newly discovered high-performing specializations into active agent populations.
@@ -473,7 +529,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
   - **Tool Permissions**: Granular access control for each agent role (e.g., Frontend agents cannot access database-write tools).
   - **Scope Locks**: Prevents agents from modifying files or resources outside their assigned functional domain.
   - **Decision Locks**: Ensures core architectural decisions (e.g., tech stack selection) remain immutable unless explicitly overridden by the Governance Layer.
-- **Tool Authority Gateway**: A mandatory security barrier that intercepts all agent tool-calls for validation against governance rules before execution.
+- **Tool Authority Gateway**: A mandatory security barrier that intercepts all agent tool-calls for validation against governance rules before execution. **Note:** Tool Authority Gateway is a sub-layer of Governance Enforcement Interface.
 
 **Swarm Scaling Policy**
 
@@ -536,6 +592,12 @@ All execution, telemetry, and mutations must reference task_id.
     - Monitors execution health signals
     - Delegates recovery to Agent Failure Supervisor
     - Does NOT manage workers directly
+
+#### Deadlock Resolution Strategy
+
+- Detect cyclic task dependencies
+- Abort lowest-priority task
+- Replan affected mission
 - **Mission Execution Interface**: Accepts structured missions from the Mission Scheduler and converts them into task graphs for agent execution via the Task Graph Engine. All tasks derived from missions are revalidated by the Governance Enforcement Interface before execution.
 - **Agent Failure Supervisor**: Monitors worker health, detects stuck reasoning loops, and orchestrates task-level recovery.
 - **Observability Pipeline**: Captures telemetry (agent_id, tool_calls, execution traces, duration) and feeds signals into debugging, performance analysis, and the Autonomous Planning Loop.
@@ -612,6 +674,12 @@ To ensure safe edits across 1000+ file projects, AstraBuild utilizes a structure
 
 Virtual runtime simulator that allows the AI to predict the impact of code changes before applying them, reducing the risk of breaking large codebases during refactoring.
 
+#### Simulation Enforcement Rule
+
+All non-trivial code or architecture changes MUST pass through Change Simulation Layer before execution.
+
+Bypass is a governance violation.
+
 Key capabilities:
 - Static code analysis of proposed changes
 - Runtime simulation of code paths
@@ -671,6 +739,14 @@ Maintains a full trace of:
 **Replay Engine**
 Re-executes past missions step-by-step using recorded snapshots and deterministic seeds to reproduce identical outcomes.
 Replay execution restores PSG state in isolation using snapshot loading and does NOT mutate current live state unless explicitly committed through governance validation.
+
+**External State Control**
+
+- External calls must be:
+  - mocked OR
+  - recorded and replayed
+
+Ensures deterministic replay.
 
 **Time-Travel Debugging Interface**
 Allows inspection of system state at any point in execution history without mutating current state.
@@ -819,6 +895,12 @@ Ensures long-term context, consistency, and absolute system optimization:
 - **Meta-Learning Engine**: Analyzes patterns across multiple projects to improve code generation quality and pre-emptively apply safeguards.
 - **Agent Evolution Engine**: Automatically discovers and evolves high-performing agent specializations through execution analysis. Generates new skill modules from successful mission patterns and benchmarks agent capabilities against performance metrics.
 - **Operational Memory Store Integration**: Debugging traces and runtime learnings are stored as auxiliary memory. Operational Memory is non-authoritative and exists outside the Project State Graph. When persistence to World State Memory is required, all writes must pass through the Governance Enforcement Interface; direct mutation of the Project State Graph is not permitted.
+
+**Memory Trust Model**
+
+- Memory is non-authoritative
+- Must be validated against PSG before use
+- Stale memory is ignored or downgraded
 
 #### Cross-Project Knowledge Graph
 
