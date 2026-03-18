@@ -453,7 +453,20 @@ Each task must include:
 - PSG snapshot version
 - assigned agent_id
 - execution_context (deterministic seed, resource constraints)
-- priority_score (weighted across correctness, urgency, architectural impact)
+- priority_score ∈ {0,1,2,3}
+
+Calculation:
+
+priority_score =
+  correctness_score * 3 +
+  urgency_score * 2 +
+  architectural_impact_score * 1
+
+Where:
+
+correctness_score ∈ {0,1}
+urgency_score ∈ {0,1}
+architectural_impact_score ∈ {0,1}
 - validation_requirements (test suite, security scan, architecture check)
 
 #### Execution Properties
@@ -1034,6 +1047,9 @@ Agent Proposal
 → Task Graph Engine
 → Autonomous Execution Engine
 → Tool Execution Layer
+→ Verification Layer
+→ Governance Enforcement Interface (Pre-Commit)
+→ PSG Mutation Gateway
 
 Responsibilities:
 
@@ -1643,8 +1659,10 @@ Policies:
 Memory Eviction Rule:
 
 - IF usage_frequency = 0 for 100 consecutive missions → trust_score = 0
-- downgrade if contradicted by PSG
-- upgrade if repeatedly validated
+Memory Update Rules:
+
+IF PSG_validation = 0 → trust_score = 0
+IF PSG_validation = 1 AND usage_frequency ≥ 10 → trust_score = 1
 
 IF trust_score = 0 → memory is ignored
 IF trust_score = 1 → memory is allowed as context input
@@ -1961,7 +1979,7 @@ This ensures:
 
 ## Multi-Agent Topology Cluster Map
 
-To manage **34 logical agent roles (expanded into ~42–48 executable agent instances depending on task decomposition)** without chaos, AstraBuild organizes specialized roles into **Functional Clusters** overseen by the Orchestration Core. Specialized agents dynamically spawn ephemeral micro-agents for atomic tasks, scaling to hundreds of concurrent operations.
+To manage **34 logical agent roles (expanded into 48 executable agent instances based on fixed decomposition rules defined by Task Graph Engine)** without chaos, AstraBuild organizes specialized roles into **Functional Clusters** overseen by the Orchestration Core. Specialized agents dynamically spawn ephemeral micro-agents for atomic tasks, scaling to hundreds of concurrent operations.
 
 Result:
 
