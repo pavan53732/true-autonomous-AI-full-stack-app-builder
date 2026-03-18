@@ -551,7 +551,7 @@ Key capabilities:
 - Security vulnerability detection
 - Rollback plan generation
 - **Visual Consistency Validation**: Ensures UI changes maintain layout integrity, spacing consistency, and design system alignment before application
-- **Architecture Pattern Testing**: Evaluates alternative component arrangements and dependency structures for the Architecture Optimization Engine
+- **Architecture Pattern Testing**: Evaluates alternative component arrangements and dependency structures via the Architecture Optimization Interface
 - **External Pattern Validation**: Cross-references proposed patterns against Global Code Intelligence Network to validate alignment with current community best practices
 
 This layer sits between code mutation and verification to catch issues early in the development process.
