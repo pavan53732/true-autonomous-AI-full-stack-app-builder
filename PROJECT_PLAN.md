@@ -494,7 +494,7 @@ Each task must include:
 - scheduling_strategy = priority_ordered_queue
 - execution_model = deterministic
 - rollback_scope = task_level
-- retry_limit_per_task = 3
+- retry_limit_per_task = 20
 - deadlock_resolution_strategy = abort_lowest_priority_task
 
 #### Integration Points
