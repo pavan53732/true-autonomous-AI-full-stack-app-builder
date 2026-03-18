@@ -36,6 +36,10 @@ The Control Plane is responsible for:
 - Global Priority Arbiter (conflict resolution across missions, not task scheduling)
 - System Recovery Controller (system-level failover only, not task-level retries)
 
+**Note:** 
+- **Autonomous System Control Plane** → system-wide coordination (planning, governance, lifecycle)
+- **Execution Runtime Control Plane** → process/runtime management only (process creation, sandboxing, worker lifecycle)
+
 ## Cost-Neutrality Invariant
 
 AstraBuild must not optimize, rank, route, or make decisions based on economic cost.
@@ -204,6 +208,37 @@ All writes to the Project State Graph follow strict transactional guarantees:
 
 This ensures consistency during high-concurrency multi-agent execution.
 
+#### PSG Write Authority
+
+All writes to the Project State Graph must be executed through a single component:
+
+- **PSG Mutation Gateway**
+
+Responsibilities:
+- Accepts validated mutation intents from agents
+- Performs final governance validation
+- Executes transactional writes
+- Emits change events to the Event Bus
+
+Restrictions:
+- Agents cannot write directly
+- Runtime cannot write directly
+- Planning systems cannot write directly
+
+All mutations must pass:
+Agent → Governance → PSG Mutation Gateway → PSG
+
+#### PSG Read Consistency Model
+
+- All agent reads operate on snapshot-isolated views
+- Each mission operates on a consistent PSG snapshot
+- Snapshot version is attached to every task execution
+
+Guarantees:
+- No partial state visibility
+- Deterministic reasoning context
+- Conflict detection during commit phase
+
 ---
 
 **Architecture Decision Locks**
@@ -269,6 +304,15 @@ Maintains the global mission queue and schedules missions for execution through 
 
 **Micro-Mission Generator**
 Generates fine-grained tasks derived from active missions or real-time interaction feedback (UI tweaks, minor refactors, alignment fixes). Micro-missions are restricted to low-risk, localized changes and cannot modify global architecture or decision-locked components.
+
+**Mission Backpressure Controller**
+
+- Limits total active missions
+- Limits micro-mission generation rate
+- Applies priority-based throttling
+- Prevents recursive mission explosion
+
+Ensures bounded autonomous execution.
 
 **Autonomous Feedback Loop**
 Validates mission results and updates the Project State Graph, triggering the next cycle of improvement missions to enable continuous, self-driven evolution.
@@ -457,9 +501,34 @@ Routes tasks to appropriate AI models based on reasoning complexity, latency con
 **Inference Scheduler**: Optimizes model inference operations through intelligent batching, token throughput optimization, and latency balancing across concurrent agent requests. Maximizes GPU utilization while maintaining stable and efficient inference throughput.
 - All model inference calls are executed under deterministic seed control when replay or validation mode is active.
 
+#### Model Routing Policy
+
+- Deterministic routing based on task type and required capability
+- No cost-based routing allowed
+- Fallback hierarchy defined per task category
+- Model failure triggers automatic re-routing with same constraints
+
+Routing inputs:
+- task type
+- reasoning complexity
+- required determinism
+
 #### Core Components
 
 - **Task Graph Engine**: Converts structured plans and autonomous missions into dependency-aware execution DAGs.
+
+#### Task Identity Model
+
+Each task must include:
+
+- task_id (globally unique)
+- mission_id
+- parent_task_id
+- PSG snapshot version
+- assigned agent_id
+
+All execution, telemetry, and mutations must reference task_id.
+
 - **Global Task Queue**: A high-speed priority queue that manages task scheduling, persistence, and failure retries.
 - **Worker Manager**: Requests worker process creation via the Execution Runtime Control Plane and manages assigned worker lifecycles without direct process ownership.
   - **Execution Stability Controller (coordination layer only)**:
@@ -647,6 +716,12 @@ This system is NOT a separate graph. It operates as a reasoning layer over PSG p
 - Generate architecture migration and refactoring plans
 - Maintain architecture knowledge graph and pattern library
 
+#### Knowledge Integration
+
+- Uses Cross-Project Knowledge Graph for pattern validation
+- Stores successful architecture decisions into pattern library
+- Learns from architecture outcomes via Meta-Learning Engine
+
 #### Internal Engines
 
 - Architecture Graph Builder (PSG projection)
@@ -819,6 +894,20 @@ Prevents recursive failures and destructive actions:
   - Block action via Governance Enforcement Interface
   - Log violation in Governance Transparency Layer
   - Remove cost-related factors before re-execution
+
+#### Governance Enforcement Interface (Execution Gate)
+
+Validates every action before execution:
+
+Checks include:
+- Architecture constraint validation
+- Decision lock enforcement
+- Scope boundary enforcement
+- Tool permission validation
+- Anti-hallucination validation
+- Cost contamination detection
+
+Only approved actions proceed to execution.
 
 **Failure Domain Isolation System**
 
