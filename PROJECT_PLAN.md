@@ -75,10 +75,7 @@ Any cost-based reasoning is a governance violation and must be rejected.
 - **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
 - **All user-provided intents are interpreted, not executed**
 
-Hierarchy of control:
-User-provided intent → Interaction Layer → Planning → PSG → Governance → Execution
-
-This ensures deterministic, conflict-free system evolution.
+ 
 
 ### 1. Intent & Product Design Engine
 
@@ -99,19 +96,33 @@ The entry point of the system, responsible for converting high-level ideas into 
 - **Reasoning Cache Engine**: Stores and retrieves previous state-traversals to optimize latency and reduce repeated reasoning cycles.
 - **Reproducibility Engine**: Enforces deterministic reasoning traces to ensure architectural consistency across identical mission profiles.
 
-#### Unified Execution Flow (Authoritative)
+Hierarchy of control (Authoritative)
 
-Agent Proposal
-→ Governance Enforcement Interface (decision validation + tool validation)
+User-provided intent
+→ Interaction Layer
+→ Planning
+→ Agent Proposal
+→ Governance Enforcement Interface
 → (if approved)
-→ Task Graph Engine (scheduling)
-→ Agent Runtime Execution
-→ Tool Authority Gateway (for tool calls)
-→ Result Validation (Simulation + Verification)
+→ Execution (Task Graph → Runtime → Tools)
+→ (on failure) → Agent Failure Supervisor → Replan via Mission Engine → Re-execution (through Governance)
+→ Mandatory Simulation Layer (pre-execution for non-trivial changes)
+→ Verification (post-execution)
 → PSG Mutation Gateway
-→ PSG
+→ Project State Graph
 
-**Critical Rule:** Governance must be BEFORE execution, not after. No component may bypass this chain.
+Note: Governance must be BEFORE execution.
+
+**Global Execution Invariant**
+
+No system component may:
+- execute actions
+- call tools
+- mutate state
+
+without passing through the Governance Enforcement Interface.
+
+Any bypass is a system-level violation.
 
 ### 1.5 Project State Graph & World Model Layer
 
@@ -121,18 +132,31 @@ Instead of agents reasoning on partial prompt context, they interact with the sh
 
 #### Core Responsibilities
 
-- Maintains a **global representation of the project state**
-- Synchronizes planning, execution, and debugging systems
-- Tracks architecture, tasks, dependencies, and runtime state
-- Prevents conflicting actions between agents
-- Enables long-running autonomous project evolution
-- **All writes to the Project State Graph must originate from validated agent actions and pass governance enforcement.**
+- Maintains authoritative architecture state (components, APIs, relationships)
+- Stores system decisions and decision locks
+- Provides a consistent world model for reasoning
+- Ensures architectural integrity across all operations
+
+The PSG does NOT store:
+- task execution state (Execution Graph owns this)
+- runtime telemetry or logs (Runtime State Store owns this)
+- learning or historical patterns (Memory Layer owns this)
 
 #### Architecture Governance System
 
 A centralized enforcement layer that ensures architectural correctness across all system phases.
 
 This system does NOT perform reasoning. It enforces decisions produced by the Architecture Intelligence System.
+
+#### Separation of Concerns
+
+- Architecture Intelligence System:
+  produces decisions, analysis, and recommendations
+- Governance Enforcement Interface:
+  validates and enforces decisions
+
+Governance does NOT generate decisions.
+Architecture Intelligence does NOT enforce decisions.
 
 #### Responsibilities
 
@@ -152,7 +176,7 @@ This system does NOT perform reasoning. It enforces decisions produced by the Ar
 #### Subsystems
 
 **Global Project World Model**
-A graph representation of the entire software system where nodes (Project, Feature, Service, API, Component, Database, File, Function, Task, Agent, Deployment Instance) and edges (DEPENDS_ON, IMPLEMENTS, CALLS, MODIFIES, GENERATES, DEPLOYED_TO) create a unified map of the full system architecture.
+ A graph representation of the entire software system where nodes (Project, Feature, Service, API, Component, Database, File, Function, Deployment Instance) and edges (DEPENDS_ON, IMPLEMENTS, CALLS, MODIFIES, GENERATES, DEPLOYED_TO) create a unified map of the full system architecture.
 
 ---
 
@@ -174,8 +198,15 @@ All lifecycle transitions must pass validation before being committed to the Pro
 
 ---
 
-**Task Progress Graph**
-Tracks the execution state of all planned work (Epic → Feature → Task → Atomic Operation) with assigned agents, dependency constraints, and validation states.
+**Execution Graph (External to PSG)**
+
+Tracks:
+- task execution state (Epic → Feature → Task → Atomic Operation)
+- dependency constraints
+- agent assignments
+- execution lineage
+
+This graph is NOT part of PSG and is maintained separately.
 
 ---
 
@@ -232,6 +263,14 @@ Restrictions:
 All mutations must pass:
 Agent → Governance → PSG Mutation Gateway → PSG
 
+#### Write Path Uniqueness Guarantee
+
+PSG Mutation Gateway is the ONLY component allowed to commit writes.
+
+No fallback, secondary path, or emergency override exists.
+
+All mutation attempts outside this path are rejected.
+
 #### PSG Read Consistency Model
 
 - All agent reads operate on snapshot-isolated views
@@ -242,6 +281,19 @@ Guarantees:
 - No partial state visibility
 - Deterministic reasoning context
 - Conflict detection during commit phase
+
+#### Snapshot Consistency Rule
+
+All:
+- planning
+- execution
+- simulation
+
+must operate on a fixed PSG snapshot.
+
+Live PSG cannot be read during execution.
+
+Prevents non-deterministic behavior.
 
 #### Logical PSG Decomposition
 
@@ -510,7 +562,12 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 - **Agent Skill Library**: Reusable capability modules for common operations (API generation, database migration, query optimization, deployment). Agents dynamically load skills instead of being retrained.
 
 - **Internal Mechanisms**:
-  - **Global Event & Messaging Bus (implemented via Control Plane Event Router)**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
+- **Global Event & Messaging Bus (implemented via Control Plane Event Router)**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
+- Event messages cannot trigger execution directly.
+- All execution-triggering actions derived from events must pass through:
+→ Governance Enforcement Interface
+→ Task Graph Engine
+- Precludes indirect governance bypass via messaging.
   - **Agent Communication Rules**:
     - Agents cannot share private memory directly
     - All communication must go through:
@@ -530,6 +587,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
   - **Scope Locks**: Prevents agents from modifying files or resources outside their assigned functional domain.
   - **Decision Locks**: Ensures core architectural decisions (e.g., tech stack selection) remain immutable unless explicitly overridden by the Governance Layer.
 - **Tool Authority Gateway**: A mandatory security barrier that intercepts all agent tool-calls for validation against governance rules before execution. **Note:** Tool Authority Gateway is a sub-layer of Governance Enforcement Interface.
+- All tool invocations are validated by the Governance Enforcement Interface (via Tool Authority sub-layer) before entering the Tool Execution Layer.
 
 **Swarm Scaling Policy**
 
@@ -598,7 +656,12 @@ All execution, telemetry, and mutations must reference task_id.
 - Detect cyclic task dependencies
 - Abort lowest-priority task
 - Replan affected mission
-- **Mission Execution Interface**: Accepts structured missions from the Mission Scheduler and converts them into task graphs for agent execution via the Task Graph Engine. All tasks derived from missions are revalidated by the Governance Enforcement Interface before execution.
+
+---
+
+#### Mission Execution Interface
+
+Accepts structured missions from the Mission Scheduler and converts them into task graphs for agent execution via the Task Graph Engine. All tasks derived from missions are revalidated by the Governance Enforcement Interface before execution.
 - **Agent Failure Supervisor**: Monitors worker health, detects stuck reasoning loops, and orchestrates task-level recovery.
 - **Observability Pipeline**: Captures telemetry (agent_id, tool_calls, execution traces, duration) and feeds signals into debugging, performance analysis, and the Autonomous Planning Loop.
 - **Deterministic Execution Enforcer**: Ensures all agent executions, task scheduling, and tool invocations operate under deterministic constraints using controlled seeds and recorded execution context from the Deterministic Execution System.
