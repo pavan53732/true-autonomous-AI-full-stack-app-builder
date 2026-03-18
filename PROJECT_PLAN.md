@@ -95,6 +95,16 @@ The entry point of the system, responsible for converting high-level ideas into 
 - **Reasoning Cache Engine**: Stores and retrieves previous state-traversals to optimize latency and reduce repeated reasoning cycles.
 - **Reproducibility Engine**: Enforces deterministic reasoning traces to ensure architectural consistency across identical mission profiles.
 
+#### Execution Authority Chain
+
+- Mission Definition → Autonomous Planning Loop
+- Mission Scheduling → Mission Scheduler
+- Task Decomposition → Task Graph Engine
+- Task Execution → Agent Runtime Engine
+- State Mutation → Governance Enforcement Interface → PSG
+
+No component may bypass this chain.
+
 ### 1.5 Project State Graph & World Model Layer
 
 The **Project State Graph (PSG)** is the canonical world model of the entire software project. It acts as the authoritative state representation that synchronizes all agents, planning systems, and code intelligence engines.
@@ -242,13 +252,15 @@ Ranks missions based on weighted scoring across four dimensions: (1) Architectur
 
 ---
 
-**Architecture Optimization Engine**
-Automatically explores alternative architectural patterns through simulation-based evaluation. Tests component arrangements, dependency structures, and data flow patterns in the Change Simulation Layer to identify optimal architectures before applying changes.
+**Architecture Optimization Interface**
+
+- Requests optimization from Architecture Intelligence System
+- Does NOT perform optimization internally
 
 ---
 
 **Autonomous Experimentation Engine**
-Runs systematic A/B tests on architecture variants, algorithm choices, and implementation strategies. Benchmarks performance, reliability, and complexity across multiple dimensions to automatically select optimal solutions. Operates in conjunction with the Architecture Optimization Engine to validate simulated predictions against empirical results.
+Runs systematic A/B tests on architecture variants, algorithm choices, and implementation strategies. Benchmarks performance, reliability, and complexity across multiple dimensions to automatically select optimal solutions. Operates in conjunction with the Architecture Optimization Interface to validate simulated predictions against empirical results from the Architecture Intelligence System.
 
 **Mission Scheduler**
 Maintains the global mission queue and schedules missions for execution through the Task Graph Engine. Receives missions from the Mission Generator and ensures conflict prevention and dependency management during execution.
@@ -404,7 +416,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 - **Agent Skill Library**: Reusable capability modules for common operations (API generation, database migration, query optimization, deployment). Agents dynamically load skills instead of being retrained.
 
 - **Internal Mechanisms**:
-  - **Global Event & Messaging Bus**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
+  - **Global Event & Messaging Bus (implemented via Control Plane Event Router)**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
   - **Collaboration Consensus**: Multi-agent voting, negotiation protocols, and conflict resolution policies.
   - **Agent Lifecycle**: Dynamic spawning, cloning, and specialized role refinement including Backend Architect, Frontend Stylist, Security Auditor, Database Schema Designer, and Performance Optimizer.
   - **Agent Evolution Coordination**: Works with the Agent Evolution Engine to integrate newly discovered high-performing specializations into active agent populations.
@@ -522,7 +534,7 @@ To ensure safe edits across 1000+ file projects, AstraBuild utilizes a structure
 - **Internal Mechanisms**:
   - **Structural Intelligence**: AST generation, control-flow mapping, and data-flow analysis.
   - **Semantic Fingerprinting**: Code embedding generation, fingerprinting, and similarity clustering.
-  - **Drift Detection**: Architecture consistency tracking and symbol-logic mismatch analysis.
+  - **Drift Signal Emitter**: Emits structural change signals to Architecture Intelligence System for drift detection (does NOT perform drift detection internally).
   - **Comprehension Engine**: Function purpose inference, algorithm detection, and code-intent extraction.
 - **Code Ownership Graph**: Real-time attribution mapping that links every symbol and line to its originating agent and mission ID.
 - **Algorithm Pattern Detection**: Structural recognition of established algorithmic patterns (e.g., Minimax, Dijkstra, Transformers) for high-fidelity reasoning.
@@ -556,58 +568,6 @@ Before applying any structural change, the system generates:
 These results are exposed as a simplified “Impact Preview” before execution.
 
 ### 5.3 Deterministic Execution & Replay System
-
-#### Code Quality Intelligence System
-
-A unified system responsible for structural, semantic, and maintainability analysis of the codebase.
-
-This system consolidates all quality-related analysis to avoid duplication across agents and verification layers.
-
-#### Capabilities
-
-- Cyclomatic complexity analysis
-- Code duplication detection
-- Dead code detection
-- Unused dependency detection
-- Code style and formatting validation
-- Refactoring suggestion generation
-- Codebase risk scoring
-- Quality trend tracking over time
-
-This system feeds:
-- Verification Cluster
-- Refactor Agent
-- Autonomous Planning Loop
-### 5.X Architecture Intelligence System
-
-A unified architectural reasoning system built on top of the Project State Graph that enables deep analysis, simulation, validation, and optimization of system architecture.
-
-This system is NOT a separate graph. It operates as a reasoning layer over PSG projections.
-
-#### Responsibilities
-
-- Construct architecture-level graph views (services, APIs, data flow, infrastructure, deployment topology)
-- Detect architecture patterns (monolith, microservices, event-driven, layered, clean architecture, etc.)
-- Validate architecture constraints and detect anti-patterns
-- Resolve architectural conflicts and redundancy
-- Perform architecture risk, complexity, and maintainability scoring
-- Simulate architecture behavior under load, failure, and scaling conditions
-- Analyze impact before architectural mutations
-- Track architecture drift and evolution over time
-- Generate architecture migration and refactoring plans
-- Maintain architecture knowledge graph and pattern library
-
-#### Internal Engines
-
-- Architecture Graph Builder (PSG projection)
-- Architecture Reasoning Engine
-- Architecture Pattern Detection Engine
-- Architecture Constraint Engine
-- Architecture Simulation Engine
-- Architecture Scoring Engine
-- Architecture Optimization Engine
-- Architecture Knowledge Interface
-
 
 To ensure full system reliability, debuggability, and reproducibility, AstraBuild enforces deterministic execution across all autonomous operations.
 
@@ -646,6 +606,58 @@ Replay execution restores PSG state in isolation using snapshot loading and does
 **Time-Travel Debugging Interface**
 Allows inspection of system state at any point in execution history without mutating current state.
 
+### 5.4 Code Quality Intelligence System
+
+A unified system responsible for structural, semantic, and maintainability analysis of the codebase.
+
+This system consolidates all quality-related analysis to avoid duplication across agents and verification layers.
+
+#### Capabilities
+
+- Cyclomatic complexity analysis
+- Code duplication detection
+- Dead code detection
+- Unused dependency detection
+- Code style and formatting validation
+- Refactoring suggestion generation
+- Codebase risk scoring
+- Quality trend tracking over time
+
+This system feeds:
+- Verification Cluster
+- Refactor Agent
+- Autonomous Planning Loop
+
+### 5.5 Architecture Intelligence System
+
+A unified architectural reasoning system built on top of the Project State Graph that enables deep analysis, simulation, validation, and optimization of system architecture.
+
+This system is NOT a separate graph. It operates as a reasoning layer over PSG projections.
+
+#### Responsibilities
+
+- Construct architecture-level graph views (services, APIs, data flow, infrastructure, deployment topology)
+- Detect architecture patterns (monolith, microservices, event-driven, layered, clean architecture, etc.)
+- Validate architecture constraints and detect anti-patterns
+- Resolve architectural conflicts and redundancy
+- Perform architecture risk, complexity, and maintainability scoring
+- Simulate architecture behavior under load, failure, and scaling conditions
+- Analyze impact before architectural mutations
+- **Track architecture drift and evolution over time** (single authoritative owner)
+- Generate architecture migration and refactoring plans
+- Maintain architecture knowledge graph and pattern library
+
+#### Internal Engines
+
+- Architecture Graph Builder (PSG projection)
+- Architecture Reasoning Engine
+- Architecture Pattern Detection Engine
+- Architecture Constraint Engine
+- Architecture Simulation Engine
+- Architecture Scoring Engine
+- Architecture Optimization Engine
+- Architecture Knowledge Interface
+
 ### 6. AI Quality Engineering & Production Self-Healing
 
 #### Runtime Intelligence System
@@ -667,6 +679,11 @@ This system powers:
 - Error Classification Engine
 - Autonomous Debugging Loop
 - Observability Pipeline
+
+#### Integration
+
+- Consumes signals from Observability Pipeline
+- Feeds outputs into RCA Engine, Debug Loop, and Planning Loop
 
 The system maintains its own quality through a continuous feedback loop and production-level monitoring:
 
@@ -877,11 +894,11 @@ To manage **34 concurrent specialized agents** without chaos, AstraBuild organiz
 
 ### 4. Verification Cluster (5 Agents)
 
-- **Static Analyzer**: Performs linting, type-checking, and structural auditing.
+- **Static Analyzer (powered by Code Quality Intelligence System)**: Performs linting, type-checking, and structural auditing.
 - **Test Generator**: Produces unit, integration, and end-to-end test suites.
 - **Security Auditor**: Conducts SAST/DAST and vulnerability scanning.
 - **Performance Analyzer**: Detects inefficiencies and bottlenecks in the code.
-- **Architecture Validator**: Confirms output matches the original design blueprint and monitors for architecture drift from PSG invariants.
+- **Architecture Validator**: Confirms output matches the original design blueprint and monitors for architecture drift from PSG invariants (leverages Architecture Intelligence System for validation logic).
 
 ### 5. Repair & Debug Cluster (5 Agents)
 
@@ -1168,7 +1185,7 @@ Since AstraBuild uses internet-connected AI models for reasoning and code genera
 2. **Real-Time Dependency Intelligence**: Current vulnerability data, deprecation notices, version compatibility
 3. **API Ecosystem Awareness**: Live API documentation, breaking changes, migration guides
 4. **Community Knowledge**: StackOverflow patterns, GitHub issue solutions, Reddit discussions
-5. **Competitive Edge**: System evolves with the broader software ecosystem, not just internal learningsa
+5. **Competitive Edge**: System evolves with the broader software ecosystem, not just internal learnings
 
 **Implementation Approach:**
 - **On-Demand Fetching**: AI agents retrieve relevant external patterns during mission execution
