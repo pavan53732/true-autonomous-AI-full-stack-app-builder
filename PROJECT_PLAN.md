@@ -15,6 +15,27 @@ All coordination, permissions, and execution control exist **only at the AI agen
 
 This is NOT a collaborative SaaS platform. It is a **single-operator autonomous software factory**.
 
+## Autonomous System Control Plane
+
+AstraBuild operates under a unified control plane that coordinates all system-wide operations across planning, execution, memory, and governance layers.
+
+The Control Plane is responsible for:
+
+- Global system lifecycle coordination
+- Mission orchestration across subsystems
+- Cross-layer synchronization (PSG, agents, runtime)
+- System-wide state consistency enforcement
+- Global event routing and priority arbitration
+- Fail-safe coordination and system recovery triggers
+
+### Core Subsystems
+
+- Global Mission Coordinator
+- System State Synchronizer
+- Cross-Layer Event Router
+- Global Priority Arbiter
+- System Recovery Controller
+
 ## Cost-Neutrality Invariant
 
 AstraBuild must not optimize, rank, route, or make decisions based on economic cost.
@@ -89,6 +110,17 @@ Instead of agents reasoning on partial prompt context, they interact with the sh
 - Enables long-running autonomous project evolution
 - **All writes to the Project State Graph must originate from validated agent actions and pass governance enforcement.**
 
+#### Architecture Governance System
+
+A unified system ensuring architectural correctness across all stages:
+
+- Planning Verification Layer (pre-generation validation)
+- Architecture Integrity Model (invariant enforcement)
+- Architecture Validator (agent-level validation)
+- Drift Detection (post-change monitoring)
+
+This system guarantees that architecture constraints remain consistent during planning, execution, mutation, and runtime evolution.
+
 #### Subsystems
 
 **Global Project World Model**
@@ -127,7 +159,19 @@ Defines architectural invariants (e.g., frontend cannot directly access DB) and 
 
 **Persistent Graph Storage**
 The Project State Graph is persisted using a graph database optimized for relationship traversal. Storage layers include an In-Memory Graph Cache for fast agent queries, a Persistent Graph Store for long-term project state, and an Incremental Graph Update Engine for real-time synchronization with code changes.
+**PSG Scalability Mechanisms**
 
+To maintain performance at scale:
+
+- Graph partitioning for large projects
+- Incremental graph recomputation
+- Relationship indexing for fast traversal
+- Lazy node loading for deep dependency trees
+- Snapshot compression for historical states
+
+Ensures PSG remains performant for large-scale autonomous systems.
+
+---
 **PSG Transaction Model**
 
 All writes to the Project State Graph follow strict transactional guarantees:
@@ -364,6 +408,15 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
   - **Scope Locks**: Prevents agents from modifying files or resources outside their assigned functional domain.
   - **Decision Locks**: Ensures core architectural decisions (e.g., tech stack selection) remain immutable unless explicitly overridden by the Governance Layer.
 - **Tool Authority Gateway**: A mandatory security barrier that intercepts all agent tool-calls for validation against governance rules before execution.
+
+**Swarm Scaling Policy**
+
+To prevent uncontrolled agent explosion:
+
+- Maximum concurrent micro-agent limits
+- Adaptive scaling based on task complexity
+- Hierarchical swarm coordination (leader agents)
+- Automatic consolidation of completed micro-agents
 
 ### 4. Agent Runtime Engine (Factory OS)
 
