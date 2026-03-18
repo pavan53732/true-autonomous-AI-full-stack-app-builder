@@ -142,8 +142,23 @@ The system is responsible ONLY for producing the highest-quality software outcom
 ### Execution Constraints
 
 - max_worker_processes = 128
-- max_task_execution_time_ms = 5000
-- min_task_execution_time_ms = 50
+task_execution_time_ms is defined per task_type:
+
+build_task_max_time_ms = 600000
+simulation_task_max_time_ms = 20000
+code_generation_task_max_time_ms = 5000
+verification_task_max_time_ms = 10000
+
+min_task_execution_time_ms = 0
+
+Constraint:
+
+Each task must declare task_type ∈ {build, simulation, code_generation, verification}
+
+Execution rule:
+
+IF task_execution_time_ms > task_type_max_time_ms
+THEN task is terminated and marked as timeout_failure
 
 ### Simulation Constraints
 
@@ -315,6 +330,14 @@ Rules:
 - No reordering is allowed
 - No parallel bypass paths exist
 - Execution is linearized and deterministic
+
+Execution Flow Authority Rule:
+
+The Global Execution Invariant is the ONLY authoritative execution definition.
+
+All other flow descriptions (sections, diagrams, examples) MUST match exactly.
+
+Any deviation is invalid.
 
 ### 1.5 Project State Graph & World Model Layer
 
@@ -697,7 +720,24 @@ Transforms detected opportunities into structured missions containing objectives
 ---
 
 **Priority & Impact Evaluator**
-Ranks missions based on weighted scoring across four dimensions: (1) Architectural integrity impact, (2) Security severity levels, (3) User-facing functionality importance, and (4) System performance degradation signals. High-priority missions are scheduled immediately; lower-priority improvements enter a queued backlog.
+Mission priority_score ∈ {0,1,2,3}
+
+Calculation:
+
+priority_score =
+  integrity_score * 3 +
+  security_score * 2 +
+  functionality_score * 1 +
+  performance_score * 1
+
+Where:
+
+integrity_score ∈ {0,1}
+security_score ∈ {0,1}
+functionality_score ∈ {0,1}
+performance_score ∈ {0,1}
+
+High-priority missions are scheduled immediately; lower-priority improvements enter a queued backlog.
 
 ---
 
@@ -947,9 +987,26 @@ Event
 → Governance Enforcement Interface (Pre-Simulation)
 → Change Simulation Layer
 → Governance Enforcement Interface (Post-Simulation)
-→ Execution Pipeline
+→ Task Graph Engine
+→ Autonomous Execution Engine
+→ Tool Execution Layer
+→ Verification Layer
+→ Governance Enforcement Interface (Pre-Commit)
+→ PSG Mutation Gateway
 
 No direct or implicit execution paths allowed from events.
+
+Event Planning Constraint:
+
+Events MAY trigger Planning Engine.
+
+Events MUST NOT:
+
+- bypass Planning Engine
+- generate Agent Proposals directly
+- trigger execution directly
+
+All event-triggered actions MUST follow full execution invariant.
 
 Additional constraint:
 
@@ -1106,6 +1163,7 @@ Each task must include:
 - parent_task_id
 - PSG snapshot version
 - assigned agent_id
+- task_type ∈ {build, simulation, code_generation, verification}
 
 All execution, telemetry, and mutations must reference task_id.
 
@@ -1176,7 +1234,25 @@ Responsibilities include:
 - Agent concurrency control
 - Model routing based strictly on capability and task requirements (no cost-based routing)
 - GPU/CPU allocation
-- Task prioritization under load
+- Task prioritization is strictly determined by priority_score and dependency constraints.
+
+Resource Scheduling Constraint:
+
+Scheduling inputs:
+
+- priority_score
+- task dependencies
+
+Scheduling MUST NOT:
+
+- use resource cost as a decision factor
+- downgrade model capability
+- reduce reasoning quality
+
+Scheduling MAY:
+
+- control concurrency
+- delay execution for stability
 
 This ensures stable operation when large numbers of agents run simultaneously.
 
@@ -2455,7 +2531,16 @@ The enhanced AstraBuild system demonstrates:
 - **Security & Governance**: Comprehensive modular governance and anti-hallucination enforcement
 - **Operational Efficiency**: Optimized execution, simulation separation, and resource management
 - **Learning & Evolution**: Cross-project knowledge transfer and deterministic improvement
-- **Production Readiness**: All safety, security, and reliability requirements met
+- **Production Readiness**:
+
+The system satisfies all architectural, safety, and governance requirements.
+
+Production deployment requires:
+
+- concurrency validation under max_active_agents = 128
+- PSG validation at max_nodes = 1000000
+- deterministic replay validation across 100 consecutive missions
+- multi-platform build validation across all target compilers
 
 The system architecture is complete and internally consistent.
 
