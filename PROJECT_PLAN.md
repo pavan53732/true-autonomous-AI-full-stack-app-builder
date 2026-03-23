@@ -1,11 +1,13 @@
 # AstraBuild: The Universal Autonomous Full-Stack Application Builder
 
+> **Document Context:** This file serves as the definitive, timeless architectural blueprint and core specification for the AstraBuild system. It outlines structural design, autonomous boundaries, multi-agent frameworks, and execution principles.
+
 AstraBuild is a **Universal Autonomous Full-Stack Application Builder** that must independently design, develop, and deploy complete software systems across:
 
 - Web applications
 - Windows native applications
 - Mobile applications (Android only)
-- Cross-platform applications
+- Cross-platform applications (Android and Web targets only; iOS is excluded)
 
 The system is inherently multi-platform at the architecture level, not as an extension or plugin capability.
 
@@ -63,10 +65,7 @@ Scheduling authority is EXCLUSIVE:
 - Task Graph Engine → task-level structure
 - Autonomous Execution Engine → execution lifecycle
 
-Agent Orchestrator:
-
-- operates ONLY within Task Graph constraints
-- cannot override scheduler decisions
+**Note on Agent Orchestrator:** The Agent Orchestrator is an **agent role** (defined in Governance & Control Cluster, Section 7 of the Multi-Agent Topology). It is not a Control Plane component. The Control Plane references it here only to state the constraint that it cannot override scheduling decisions.
 
 **Note:** 
 - **Autonomous System Control Plane** → system-wide coordination (planning, governance, lifecycle)
@@ -118,6 +117,17 @@ The system is responsible ONLY for producing the highest-quality software outcom
 
 ## Core Architecture
 
+The core architecture of AstraBuild is organized into system capacity constraints, a platform abstraction layer, an authority model, and nine numbered functional subsystems (Sections 1–9). All subsystems operate under the unified authority of the Project State Graph and Governance Enforcement Interface.
+
+### Core Autonomous Modules
+
+AstraBuild incorporates a curated set of **27 autonomous modules** and **18 reasoning engines** that provide proven implementations for indexing, dependency management, error recovery, code analysis, and multi‑agent coordination. These modules are instantiated as standard libraries within the Tool Execution Layer and are **always** subject to the Governance Enforcement Interface, the Cost‑Neutrality Invariant, and the Global Execution Invariant. No module is allowed to bypass these constraints.
+
+### The Host vs. Runtime Authority Split
+To guarantee absolute system security and prevent AI escape, AstraBuild physically separates operations into two completely isolated processes communicating exclusively via JSON-RPC Named Pipes:
+- **The Runtime (The AI Brain)**: A Node.js/TypeScript background process that handles all LLM communication, AST parsing, and diff generation. It executes with structurally zero authority to write to the physical filesystem or mutate the internal Execution State Store (ESS) database.
+- **The Host (The Sandbox Warden)**: A C#/.NET 8 native desktop shell that acts as the absolute authority. It owns the SQLite ESS databases, Windows permissions, and the physical filesystem. It treats the Node.js Brain as an untrusted entity, enforcing mathematical validation on every JSON-RPC request before allowing the AI to influence the user's host machine.
+
 ## System Capacity Constraints (Deterministic)
 
 ### Agent System
@@ -131,6 +141,12 @@ The system is responsible ONLY for producing the highest-quality software outcom
 - max_tasks_per_mission = 1024
 - max_task_depth = 16
 - max_parallel_workers = 128
+
+### Execution & Mutation Limits
+
+- max_attempts_before_reset = 10 (System Reset Cycle)
+- max_nodes_modified = 100 (AST Blast Radius)
+- max_affected_symbols = 50 (Inference Blast Radius)
 
 ### PSG Constraints
 
@@ -146,7 +162,7 @@ task_execution_time_ms is defined per task_type:
 
 build_task_max_time_ms = 600000
 simulation_task_max_time_ms = 20000
-code_generation_task_max_time_ms = 5000
+code_generation_task_max_time_ms = 120000
 verification_task_max_time_ms = 10000
 
 min_task_execution_time_ms = 0
@@ -163,7 +179,7 @@ THEN task is terminated and marked as timeout_failure
 ### Simulation Constraints
 
 - max_parallel_plan_branches = 16
-- max_simulation_time_ms = 10000
+- max_simulation_time_ms = 20000
 - min_simulation_time_ms = 2000
 
 ### Architecture Intelligence
@@ -180,6 +196,7 @@ AstraBuild is natively multi-platform. All planning, architecture, and execution
 All systems are first defined in a platform-neutral representation:
 
 - UI Layer (abstract components, layout, interaction model)
+  - **Fluid Layout & Component Inference**: The system relies entirely on the AI's contextual reasoning and the user's explicit intent to design layouts and select components. No hardcoded UI invariants or component mapping rules are forced onto the generator.
 - State Layer (data flow, state management)
 - Logic Layer (business rules, workflows)
 - Data Layer (schemas, persistence models)
@@ -193,7 +210,9 @@ Each target platform has a dedicated compiler pipeline:
 
 - Web Compiler (React, Vue, Angular, Next.js)
 - Windows Compiler (WinUI 3, WPF, WinForms)
-- Mobile Compiler (React Native, Flutter, Jetpack Compose)
+- Mobile Compiler (React Native, Flutter)
+
+  > **Android-Only Restriction:** When using cross-platform frameworks (React Native, Flutter), the system generates code for **Android only**. iOS targets are explicitly disabled at the compiler level. No iOS build artifacts, entitlements, or provisioning configurations are ever generated.
 - Backend Compiler (Node.js, Python, Java, .NET)
 
 Each compiler:
@@ -212,6 +231,13 @@ Ensures:
 
 Prevents divergence between platform implementations.
 
+#### Universal Code Architecture Invariants
+
+Regardless of the target framework (.NET, React, Android, Python), the AI agents MUST adhere to these meta-programming invariants to ensure the code remains pure and undisturbed:
+
+1. **The Pure Code Generation Mandate (Zero-Boilerplate)**: AstraBuild is strictly forbidden from forcing artificial folder structures, "Minimal Kernels," or opinionated multi-layer architectures (like forced Tri-Layer domains) onto the user's application. The system must natively generate the exact files required for the application to function, starting from absolute scratch, ensuring 100% purity of the user's intended design.
+2. **Universal Package Lock Enforcement**: To ensure hermetic reproducibility, AstraBuild enforces strict package locking across all ecosystems (e.g., executing `npm ci` instead of `npm install`). If a package lockfile (e.g., `package-lock.json`, `packages.lock.json`) is absent or stale, the build fails immediately, forcing a dedicated Dependency Agent to formally regenerate it.
+
 ### Authority Model
 
 - **Project State Graph (PSG)** is the single source of truth
@@ -226,20 +252,22 @@ Prevents divergence between platform implementations.
 - **PSG Transaction Boundary**: All state mutations are funneled through a single transaction layer that enforces governance validation before any write is committed to the Project State Graph.
 - **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
 - **All user-provided intents are interpreted, not executed**
-
- 
+- **Hub-and-Spoke Communication Topology**: Generative AI Agents are strictly prohibited from mutating the file system, triggering compilers, or interacting with the UI directly. All state is mediated by the Orchestrator. Agents may only submit deterministic structural patches to the Orchestrator, which acts as the single choke-point for executing filesystem writes and system builds.
+- **"Safety-First" Implementation Sequence Invariant**: The AstraBuild software development lifecycle mandates that the Orchestrator, State Machine, and Governance Enforcement layers MUST be engineered and sealed *before* any Generative AI logic is integrated. Proceeding out-of-order guarantees uncontrolled AI hallucination and architecture corruption.
 
 ### 1. Intent & Product Design Engine
 
 The entry point of the system, responsible for converting high-level ideas into actionable development blueprints:
 
+- **"Results Only" UX Philosophy**: The UI MUST strictly decouple the internal violence of agentic self-healing from the user experience. The user should never observe raw build errors, retry loops, or system amnesia events. They are presented solely with declarative progress mapping (e.g., "Designing", "Compiling", "Verifying") and the final working application.
+- **The "Hidden System Prompt" Freedom Contract**: The system mathematically restricts all hidden prompt instructions to enforcing **Framework Rules** (e.g., "Always use SQLite", "Generate valid MSIX packages"). The Orchestrator is explicitly barred from constraining the user's custom functional idea or forcing proprietary architectural patterns. The user exercises absolute supremacy over *how* the code is structured, what the application does, what it looks like, and what features it has.
 - **Prompt Understanding Engine**: Interprets user-provided intent and decomposes ideas into structured tasks.
 - **Requirement Extractor**: Automatically identifies features, user personas, API requirements, and database models.
 - **Platform Strategy Engine**:
-  Determines:
-  - which platforms to target (web, desktop, mobile)
-  - whether to use native or cross-platform approaches
-  - optimal architecture per platform
+  Operating as a deterministic logic gate (Archetype Resolver), it enforces pure user intent when deciding the target framework:
+  1. **Explicit User Supremacy**: If the user explicitly names a framework (e.g., "Build this in Vue.js"), the Archetype Resolver instantly locks the matrix to the requested framework.
+  2. **Capability-Driven Inference**: If the prompt is ambiguous, the system relies on the LLM to infer the most logical framework based on the requested capabilities (e.g., "low-level memory access" infers Rust/C++). AstraBuild enforces no hardcoded "Modern Defaults".
+  3. **Ambiguity Escalation (Anti-Hallucination)**: If a user prompts an unresolvable contradiction (e.g., "Build a Python-based frontend UI for an iOS app"), the system immediately suspends the intent phase and escalates to the human operator for clarification.
 
 - **Cross-Platform Architecture Planner**:
   Designs architecture that:
@@ -248,7 +276,13 @@ The entry point of the system, responsible for converting high-level ideas into 
   - enforces consistent APIs and data models
 
 - **Architecture & API-First Design Engine**: Designs the system structure and formal API contracts (OpenAPI/GraphQL/gRPC) before code generation.
-- **Autonomous Data Modeling Engine**: Automatically designs schemas, handles multi-database persistence, and generates migrations.
+- **Autonomous Data Modeling Engine**: Automatically designs schemas, handles multi-database persistence, and generates migrations across ecosystems (Prisma, EF Core, SQLAlchemy, etc.). To prevent data corruption, it mathematically enforces 4 Database Invariants:
+  1. **The Pure Domain Model Invariant**: The AI is forbidden from tangling physical database logic with business logic. All database-specific mapping (e.g., `@Column`, `[Required]`, foreign key definitions) must be isolated into dedicated configurations (Prisma syntax, Fluent API, XML), leaving domain classes absolutely pure.
+  2. **Deterministic Seed Idempotency**: All AI-generated seed data MUST utilize deterministic, hardcoded primary keys (not dynamic `UUID.NewGuid()`) to ensure seeding scripts can be run infinitely without duplicating rows or crashing.
+  3. **Transactional Migration Rollbacks**: All automated schema migration scripts executed by the Orchestrator MUST be wrapped in transactional try-catch blocks. If a migration crashes mid-execution (e.g., locked table, disk out of space), the system automatically rolls the database down to the last applied migration, averting partial-corruption.
+  4. **Forward-Only Immutable Schema History**: Once a generated schema migration file has been successfully executed on a target database, the AI is physically barred from ever editing that file via the `Patch Applier`. All future database architecture changes must strictly be additive forward-migrations.
+- **Autonomous Design Generation**: The system relies purely on the AI's contextual reasoning and the user's prompt to synthesize the application's aesthetic identity (colors, typography, logo style). AstraBuild enforces no rigid psychological pipelines or cached generic assets, ensuring every design is natively generated and unique.
+- **Platform Requirements Compiler**: Evaluates the AI's generated code and validates that the correct OS-level permissions (e.g., Android `Manifest.xml`) have been included by the LLM. It does not blindly inject them; it flags omissions to the AI for proper architectural inclusion.
 - **Planning Verification Layer**: A pre-generation validator that confirms architecture feasibility, dependency safety, and performance constraints before any code is written.
 
 - **Internal Mechanisms**:
@@ -258,6 +292,7 @@ The entry point of the system, responsible for converting high-level ideas into 
   - **Formal Reasoning Loop**: Implements structured reasoning patterns (Tree-of-Thought, ReAct) for complex decision-making. All reasoning traces are logged to the Reasoning Cache Engine.
   - **Self-Critique Engine**: Chain-of-thought verification and hypothesis ranking for architectural decisions.
 - **Reasoning Cache Engine**: Stores and retrieves previous state-traversals to optimize latency and reduce repeated reasoning cycles.
+- **AI Decision Trace Introspection (Explainable Run-Logs)**: Every non-trivial planning or architectural decision executed by the AI (e.g., bumping an API version, shifting from Redux to Zustand, escalating a retry stage) MUST emit a deterministic `DecisionTrace` event to the Orchestrator. This ensures human developers can natively audit the exact natural-language rationale behind the AI's structural choices.
 - **Reproducibility Engine**: Enforces deterministic reasoning traces to ensure architectural consistency across identical mission profiles.
 
 Hierarchy of control (Authoritative)
@@ -277,7 +312,7 @@ User-provided intent
 
 → Task Graph Engine
 → Autonomous Execution Engine
-→ Tool Execution
+→ Tool Execution Layer
 
 → Verification Layer
 
@@ -285,6 +320,7 @@ User-provided intent
 
 → PSG Mutation Gateway
 → Project State Graph
+→ [Continuous Loop: PSG feeds Opportunity Detection Engine → Planning Loop continues autonomously]
 
 ### Simulation Enforcement Rule (Strict)
 
@@ -310,6 +346,7 @@ No single-point enforcement exists.
 
 ### Global Execution Invariant
 
+*(Note: The legacy 12-Phase Intent-to-Deployment workflow is formally mapped as a strict subset of this uncompromising 11-step invariant. No legacy phase may operate outside these checkpoints.)*
 Execution Order (STRICT — NO DEVIATION):
 
 1. Agent Proposal
@@ -338,6 +375,8 @@ The Global Execution Invariant is the ONLY authoritative execution definition.
 All other flow descriptions (sections, diagrams, examples) MUST match exactly.
 
 Any deviation is invalid.
+
+**Latent Planning Placement:** The Latent Planning & Multi-World Exploration Layer (multi-world plan generation and selection) occurs as part of the Planning Engine, **before Step 1 (Agent Proposal)**. It is not a separate invariant step. Only the selected winning plan proceeds to generate an Agent Proposal.
 
 ### 1.5 Project State Graph & World Model Layer
 
@@ -368,6 +407,7 @@ Component
 ├── Web Implementation
 ├── Windows Implementation
 ├── Mobile Implementation
+└── Backend Implementation
 
 This ensures:
 
@@ -439,12 +479,14 @@ All lifecycle transitions must pass validation before being committed to the Pro
 **Execution Graph (External to PSG)**
 
 Tracks:
-- task execution state (Epic → Feature → Task → Atomic Operation)
+- task execution state (Epic → Feature → Task → Atomic Action)
 - dependency constraints
 - agent assignments
 - execution lineage
 
 This graph is NOT part of PSG and is maintained separately.
+
+> **Terminology Clarification:** The **Execution Graph** is the runtime state tracker (task states, agent assignments, execution lineage). The **Task Graph** (defined below in the Task Graph Formal Model) is the planned DAG of operations produced before execution. These are two distinct, complementary structures: the Task Graph is the plan; the Execution Graph is the live state of executing that plan.
 
 ---
 
@@ -476,26 +518,32 @@ Each task must include:
 - PSG snapshot version
 - assigned agent_id
 - execution_context (deterministic seed, resource constraints)
-- priority_score ∈ {0,1,2,3}
+- validation_requirements (test suite, security scan, architecture check)
+- task_priority_score ∈ {0..6}
 
 Calculation:
 
-priority_score =
+task_priority_score =
   correctness_score * 3 +
   urgency_score * 2 +
   architectural_impact_score * 1
+
+**Score Criteria Definitions:**
+
+- `correctness_score = 1` if the task is required to fix a correctness violation (failing test, broken invariant, architecture contract breach), else `0`
+- `urgency_score = 1` if the task is on the critical path of an active mission or blocks other dependent tasks, else `0`
+- `architectural_impact_score = 1` if the task modifies a core architecture component, service boundary, API contract, or decision-locked element, else `0`
 
 Where:
 
 correctness_score ∈ {0,1}
 urgency_score ∈ {0,1}
 architectural_impact_score ∈ {0,1}
-- validation_requirements (test suite, security scan, architecture check)
 
 #### Execution Properties
 
 - **Deterministic Execution**: All tasks execute under controlled seeds and recorded context
-- **Snapshot Isolation**: Each task operates on a fixed PSG snapshot
+- **Snapshot Isolation**: Each task operates on a fixed PSG snapshot taken at mission start
 - **Validation Pipeline**: Pre-execution validation, post-execution verification
 - **Rollback Capability**: Atomic rollback on validation failure
 - **Telemetry Capture**: Complete execution trace for debugging and learning
@@ -510,12 +558,13 @@ architectural_impact_score ∈ {0,1}
 
 #### Execution Flow
 
-1. **Task Generation**: Mission → Task Graph Engine → DAG construction
-2. **Validation**: Governance Enforcement Interface → Pre-execution validation
-3. **Scheduling**: Global Task Queue → Priority-based ordering
-4. **Execution**: Autonomous Execution Engine → Worker coordination
-5. **Verification**: Verification Cluster → Post-execution validation
-6. **Commit**: PSG Mutation Gateway → State synchronization
+The Task Graph Formal Model participates in the Global Execution Invariant (defined above). Specifically:
+
+- **Task Generation**: Mission → Task Graph Engine → DAG construction (Step 5 of Global Execution Invariant)
+- **Scheduling**: Global Task Queue → Priority-based ordering (within Step 6, Autonomous Execution Engine)
+- **Commit**: PSG Mutation Gateway → State synchronization (Step 10)
+
+All other steps (Governance checkpoints, Simulation, Verification) are defined by the Global Execution Invariant. No separate execution flow exists for this layer.
 
 #### Failure Handling
 
@@ -530,8 +579,17 @@ architectural_impact_score ∈ {0,1}
 - scheduling_strategy = priority_ordered_queue
 - execution_model = deterministic
 - rollback_scope = task_level
-- retry_limit_per_task = 20
 - deadlock_resolution_strategy = abort_lowest_priority_task
+- retry_limit_per_mission = 3
+
+**Retry Limits (Canonical — by task type):**
+
+| task_type | retry_limit |
+|---|---|
+| code_generation | 10 |
+| build | 5 |
+| simulation | 3 |
+| verification | 3 |
 
 #### Integration Points
 
@@ -614,8 +672,10 @@ All mutation attempts outside this path are rejected.
 #### PSG Read Consistency Model
 
 - All agent reads operate on snapshot-isolated views
-- Each mission operates on a consistent PSG snapshot
+- Each mission's PSG snapshot is **fixed at mission start** and remains immutable for all tasks within that mission
 - Snapshot version is attached to every task execution
+- PSG writes from tasks within an active mission are **staged** and only committed after all tasks that depend on them complete, preventing intra-mission consistency violations
+- If a task's expected snapshot version conflicts with the current live PSG at commit time, it is **rejected and replanned**
 
 Guarantees:
 - No partial state visibility
@@ -634,6 +694,14 @@ must operate on a fixed PSG snapshot.
 Live PSG cannot be read during execution.
 
 Prevents non-deterministic behavior.
+
+**PSG Snapshot Retention Policy:**
+
+- Snapshots are retained for the duration of the mission they were created for
+- After mission completion (success or abort), snapshots older than the last 10 completed missions are eligible for compaction
+- Snapshots that are still referenced by active tasks are never compacted
+- Compaction is triggered by the PSG Scalability Mechanism on a scheduled basis
+- Time-Travel Debugging snapshots are retained indefinitely until explicitly cleared
 
 #### Logical PSG Decomposition
 
@@ -663,7 +731,7 @@ The PSG maintains strict layering to prevent overload:
 - Cross-project knowledge
 - Agent evolution data
 
-All layers synchronize via PSG Mutation Gateway but maintain separate storage.
+All layers synchronize by writing through their designated gateways (PSG Mutation Gateway for PSG core; Memory Layer Gateway for the Memory Layer) but maintain separate storage.
 
 ---
 
@@ -720,11 +788,11 @@ Transforms detected opportunities into structured missions containing objectives
 ---
 
 **Priority & Impact Evaluator**
-Mission priority_score ∈ {0,1,2,3}
+mission_priority_score ∈ {0..7}
 
 Calculation:
 
-priority_score =
+mission_priority_score =
   integrity_score * 3 +
   security_score * 2 +
   functionality_score * 1 +
@@ -754,6 +822,8 @@ Runs systematic A/B tests on architecture variants, algorithm choices, and imple
 **Mission Scheduler**
 Maintains the global mission queue and schedules missions for execution through the Task Graph Engine. Receives missions from the Mission Generator and ensures conflict prevention and dependency management during execution.
 
+**Mission-to-Task Priority Link:** The Mission Scheduler assigns `mission_priority_score` to each mission. The Task Graph Engine uses this score to influence `task_priority_score` for tasks within that mission. Specifically, tasks belonging to higher-priority missions receive a base priority boost applied before the task-level formula. Task scheduling authority remains exclusively with the Task Graph Engine and Global Task Queue.
+
 ---
 
 **Micro-Mission Generator**
@@ -769,7 +839,7 @@ Generates fine-grained tasks derived from active missions or real-time interacti
 Ensures bounded autonomous execution.
 
 **Autonomous Feedback Loop**
-Validates mission results and updates the Project State Graph, triggering the next cycle of improvement missions to enable deterministic, self-driven evolution.
+Validates mission results and triggers the next cycle of improvement missions by generating new Agent Proposals that flow through the Governance Enforcement Interface and PSG Mutation Gateway. Does NOT write directly to PSG.
 
 All generated missions must pass validation through the Governance Enforcement Interface before execution.
 
@@ -789,7 +859,8 @@ Ensures autonomous execution remains purposeful and bounded.
 Balances innovation and stability:
 - Controls when to explore new architectural patterns
 - Prioritizes stable solutions in mature system areas
-- Allocates exploration_budget = 4 plans per mission for experimentation
+- Allocates `exploration_budget = 4` alternative plans per mission for experimentation. This budget is enforced by the Parallel Plan Universe Generator (see Latent Planning & Multi-World Exploration Layer), which generates up to `exploration_budget` candidate plans per mission before pruning. This budget is a subset of `max_parallel_plan_branches = 16` (the total system-wide parallel planning limit).
+- **Parallel Plan Contention Resolution:** When multiple concurrent missions compete for the system-wide `max_parallel_plan_branches = 16` budget, the Parallel Plan Universe Generator applies a fair-share policy: each active mission receives `floor(16 / active_mission_count)` branches. If a mission's `exploration_budget` exceeds its fair-share allocation, excess plan generation is queued until branches free up. No mission may starve others of all planning capacity.
 - Prevents excessive architectural churn
 
 Ensures long-term system stability while enabling controlled innovation.
@@ -823,6 +894,44 @@ The system exposes mission-level abstraction:
 
 This provides transparency without exposing internal planning complexity.
 
+### 1.7 Presentation Layer State Machine
+
+> **Core Principle: Hide complexity, show only results.**
+> The UI is calm regardless of internal turmoil. Many backend states compress into few user-visible states. The user never sees agent orchestration, graph mutations, retry counters, or build logs by default.
+
+**Backend Reality**: Dozens of internal orchestrator, mission, and task states.
+**User Experience**: 7 calm user-visible states.
+
+#### The 6 User-Visible States
+
+| UI State | Maps From (Internal) | User Sees |
+|---|---|---|
+| `SYSTEM_IDLE` | No active missions, PSG stable | Prompt input active, status dot gray |
+| `PLANNING` | Opportunity Detection, Mission Generation, Architecture Design | "Thinking…" indicator, soft animation |
+| `EXECUTING` | Task Execution, Code Generation, Build, Agent Operations | "Building…" pulsing indicator |
+| `VERIFYING` | Tests, Security Scans, Architecture Validation | "Verifying…" indicator |
+| `SELF_HEALING` | Retry, Re-planning, Autonomous Debugging, Error Correction | "Optimizing…" (blue, never red) |
+| `PREVIEW_READY` | Mission Complete, Output Available | Result surfaced, action buttons appear |
+| `INTERVENTION_REQUIRED` | Governance Block, Guard Rejected | Explanatory prompt, user decision buttons |
+
+**State Compression Rule:** All internal states within an active mission map to `EXECUTING` until either success (`PREVIEW_READY`) or extended recovery (`SELF_HEALING`). No intermediate states are ever surfaced.
+
+#### Two-Tier Silent Recovery Model
+
+**Tier 1 — Silent Auto-Recovery (initial retries):**
+- No UI change whatsoever
+- Spinner continues smoothly
+- No error message, no visual disruption
+- System retries automatically
+
+**Tier 2 — Extended Recovery (user informed, not alarmed):**
+- Blue informational banner: "Optimizing…" (never red, never "Error")
+- Cancel option available at all times
+- System continues retrying until success or user cancellation
+- No terminal failure state is ever shown
+
+> **No FATAL state exists in the UI.** The presentation layer has no failed/crashed visual state. The system retries until it succeeds or the user explicitly cancels. This is a design invariant, not an implementation detail.
+
 ---
 
 
@@ -840,6 +949,41 @@ The "Brain" that feeds agents the precise information needed for any given task:
 - **Prompt Compiler**: Assembles final agent prompts by combining context, memory, system rules, governance policies, and task specifications into optimized prompt templates.
 - **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and context precision optimization. A/B tests prompt variants to identify highest-performing templates.
 - **Interaction Context Bridge**: Receives refined and disambiguated intent from the Interaction Intelligence Layer and transforms it into PSG-aligned contextual inputs for agent execution.
+
+**Core Optimization Modules (27 modules):**  
+These modules are native to AstraBuild and have been designed to obey the system's governance, cost‑neutrality, and deterministic execution rules. They reside **exclusively** in the Tool Execution Layer or as auxiliary reasoning components; they never bypass the Governance Enforcement Interface.
+
+| Module | Purpose | AstraBuild Placement | Required Adaptations |
+|--------|---------|----------------------|----------------------|
+| Message & Context Deduplication | Remove redundant context before injection | Context Orchestration Engine (Section 2) | None – pure optimisation |
+| Code Fingerprint Matrix | Skip re‑reading unchanged files | Code Intelligence & Optimization Layer (Section 5) | None |
+| Dependency Abandonment Detection | Prevent use of deprecated packages | Safety & Governance Layer (Section 9) – Dependency Guard | None |
+| Pattern Retriever | Retrieve relevant code patterns | Code Intelligence & Optimization Layer (Section 5) | Must use PSG‑validated patterns only |
+| API Reference Retriever | Fetch external API docs | Context Orchestration Engine (Section 2) – via Global Code Intelligence Network | Read‑only, cached |
+| Knowledge Validator | Verify external knowledge | Governance Enforcement Interface – Anti‑Hallucination Validator | Integrated as external source validation |
+| Code Query Engine | Natural language queries over code | Code Intelligence & Optimization Layer (Section 5) | Queries only against PSG projections |
+| Refactoring Engine | Safe code transformations | AI Coding Engine (Section 5.1) – AST Patch Generator | Must follow AST‑only mutation rule |
+| Migration Engine | Framework / API migrations | Strategic Planning Engine (Section 1.6) | Must generate forward‑only additive migrations |
+| Architecture Simulator | Simulate architecture changes | Architecture Intelligence System (Section 5.5) – Architecture Simulation Engine | Replaces internal simulation, uses same simulation contract |
+| Performance Profiler | Real‑time runtime analysis | Runtime Intelligence System (Section 6) | Feeds into Observability Pipeline |
+| Crash Pattern Analyzer | Analyse crash logs | Autonomous Debugging Loop (Section 6) | Must use normalized error hashing |
+| Resource Monitor | Monitor system resources | Execution Runtime Control Plane (Section 4) | Warnings only; no action without governance |
+| Agent Metrics Collector | Track agent performance | Agent Performance Monitor (Section 3) | Integrated into existing metrics |
+| Dynamic Agent Spawner | Spawn agents on demand | Agent Lifecycle (Section 3) – Micro‑Agent Lifecycle | Already covered |
+| Swarm Coordinator | Coordinate parallel agents | Agent Swarm Coordination (Section 3) | Already covered |
+| Skill Improver | Improve agent skills | Agent Evolution Engine (Section 7) | Integrated |
+| Code Embedding Generator | Semantic code search | Code Intelligence & Optimization Layer (Section 5) | Used for similarity detection |
+| Dependency Health Monitor | Scan vulnerabilities | Safety & Governance Layer (Section 9) – Dependency Guard | Integrated |
+| Package Registry Scanner | Query package metadata | Tool Execution Layer (Section 4) – External Knowledge Fetching | Read‑only |
+| Code Cache Manager | Cache analysis results | Code Intelligence & Optimization Layer (Section 5) | Uses PSG‑aware cache |
+| Prompt Optimizer | Optimise prompts | Context Orchestration Engine (Section 2) – Prompt Optimization Engine | Already covered |
+| Plan Refinement Loop | Iterate on plans | Latent Planning & Multi-World Exploration Layer | Already covered |
+| Reasoning Replay | Replay reasoning traces | Deterministic Execution & Replay System (Section 5.3) – Replay Engine | Already covered |
+| Multi‑Language Parser | Parse multiple languages | Code Intelligence & Optimization Layer (Section 5) – AST Parser | Already covered |
+| Agent Execution Sandbox | Isolate agent execution | Tool Execution Layer (Section 4) – Sandboxing | Already covered |
+| Code Quality Intelligence | Enforce code quality | Code Quality Intelligence System (Section 5.4) | Already covered |
+
+**Important:** All modules listed above that interact with external knowledge (e.g., API Reference Retriever) are strictly **read‑only** and **cached**. No code or proprietary information leaves the local environment.
 
 **Hard Validation Layer (Anti-Hallucination Enforcement)**
 
@@ -906,13 +1050,20 @@ Bridges the gap between user-provided intent, visual state, and system execution
 #### Core Capabilities
 
 - **Visual Intent Alignment Engine**:
-  Interprets user-provided intent in the context of the current UI state. Relies on the Visual State Interpreter (Section 5.3) for structured UI state extraction.
+  Interprets user-provided intent in the context of the current UI state. Relies on the Visual State Interpreter (Embedded Subsystems → 5.3 AI Observation & Interaction) for structured UI state extraction.
   - Captures UI snapshots from the Preview System
   - Analyzes layout, spacing, hierarchy, and visual structure
   - Maps vague intent (e.g., “make it cleaner”) to concrete UI transformations
 
 - **UI-to-Code Reverse Mapping Engine**:
   Enables direct mapping between rendered UI elements and source code.
+
+  Integration flow with Visual State Interpreter:
+
+  1. Screenshot → **Visual State Interpreter** (AI Vision) → Structured component tree (layout, spacing, hierarchy)
+  2. Structured tree → **UI-to-Code Reverse Mapping Engine** (using PSG) → Component → File → Props mapping
+  3. Source code location identified → **Micro-Mission Submission** generates a targeted patch intent
+
   - Identifies component → file → props relationships
   - Supports interaction-driven modifications (click → modify → patch)
 
@@ -921,15 +1072,14 @@ Bridges the gap between user-provided intent, visual state, and system execution
   observe → mutate → validate → re-observe
   without requiring full mission re-execution.
 
-- **Micro-Mission Executor**:
-  Executes ONLY tasks generated by Task Graph Engine.
+- **Micro-Mission Submission**:
+  Submits fine-grained micro-mission intents to the Micro-Mission Generator (Section 1.6).
 
-  Must follow full execution invariant and cannot bypass:
-  - planning
-  - governance
-  - simulation
+  The intent is submitted as structured input and MUST pass through:
+  - Micro-Mission Generator → full execution invariant (no bypass)
+  - All execution occurs inside the Autonomous Execution Engine (Section 4)
 
-  No alternate execution path exists for micro-missions. Executes only micro-missions generated or validated by the Micro-Mission Generator (Section 1.6).
+  The Interaction Layer does NOT execute micro-missions directly. It ONLY submits intent.
 
 - **Intent Clarification Engine**:
   Detects ambiguity in user-provided intent and generates structured interpretation options for refinement.
@@ -943,7 +1093,7 @@ Bridges the gap between user-provided intent, visual state, and system execution
 
 - **Decision Confidence Model**:
   Attaches confidence scores and risk levels to all system actions:
-  - confidence_score ∈ {0,1}
+  - confidence_score ∈ [0.0, 1.0] (continuous float, enables gradient calibration)
   - risk_level ∈ {0,1,2}
   - Rollback availability
 
@@ -954,7 +1104,9 @@ Bridges the gap between user-provided intent, visual state, and system execution
 
 AstraBuild coordinates a team of specialized AI agents under a strict governance framework:
 
-- **World Model Synchronization**: All agents read from and write to the Project State Graph to maintain a consistent understanding of the evolving system.
+- **World Model Synchronization**: All agents read from the Project State Graph to maintain a consistent understanding of the evolving system. Agents write to PSG exclusively through the PSG Mutation Gateway (via Agent Proposal → Governance flow).
+
+- **Execution Graph Read Access**: Agents have **read-only access to the Execution Graph** via a structured query interface (Execution Graph Query API). This allows agents to observe task progress, completion status, and agent assignments within an active mission — enabling coordination without granting write authority. Agents cannot mutate the Execution Graph directly.
 
 - **Governance Enforcement Interface**: A decision engine that validates agent plans against project rules before execution.
 - **Design System Engine**: A specialized UI/UX agent that creates a cohesive visual language (colors, typography, spacing) and consistent component libraries.
@@ -963,7 +1115,7 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 - **Agent Skill Library**: Reusable capability modules for common operations (API generation, database migration, query optimization, deployment). Agents dynamically load skills instead of being retrained.
 
 - **Internal Mechanisms**:
-- **Global Event & Messaging Bus (implemented via Control Plane Event Router)**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
+  - **Global Event & Messaging Bus (implemented via Control Plane Event Router)**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
 - Event messages cannot trigger execution directly.
 
 Event-to-Execution Constraint:
@@ -1032,19 +1184,29 @@ Any event-triggered planning must:
 
 - **Agent Safety Boundaries**:
   - **Tool Permissions**: Granular access control for each agent role (e.g., Frontend agents cannot access database-write tools).
-  - **Scope Locks**: Prevents agents from modifying files or resources outside their assigned functional domain.
+  - **Scope Locks (The Role-Based File Sandbox Contract)**: To mathematically prevent "blast-radius" corruption, every agent operates under a strict `AllowedFilePatterns` matrix. For example, a Frontend Agent is physically locked to `Views/` and `ViewModels/`, while a Fixer Agent's write permissions are dynamically scoped *only* to the exact file referenced in the compiler error. Any attempt by an agent to mutate a file outside its sandbox throws an immediate `SANDBOX_ESCAPE_ATTEMPT` and halts the transaction.
   - **Decision Locks**: Ensures core architectural decisions (e.g., tech stack selection) remain immutable unless explicitly overridden by the Governance Layer.
-- **Tool Authority Gateway**: A mandatory security barrier that intercepts all agent tool-calls for validation against governance rules before execution. **Note:** Tool Authority Gateway is a sub-layer of Governance Enforcement Interface.
+- **Tool Authority Gateway**: A mandatory security barrier that intercepts all agent tool-calls for validation against governance rules. It sits **between agents and the Tool Execution Layer** and is implemented as a sub-layer of the Governance Enforcement Interface. Agents never reach the Tool Execution Layer without passing through the Tool Authority Gateway. This applies in all execution contexts.
 - All tool invocations are validated by the Governance Enforcement Interface (via Tool Authority sub-layer) before entering the Tool Execution Layer.
 
 **Swarm Scaling Policy**
 
 To prevent uncontrolled agent explosion:
 
-- Maximum concurrent micro-agent limits
+- Maximum concurrent micro-agent limits (`max_micro_agents = 256` system-wide)
 - Fixed-policy scaling based on task complexity
 - Hierarchical swarm coordination (leader agents)
 - Automatic consolidation of completed micro-agents
+
+**Micro-Agent Lifecycle:**
+
+1. A specialized agent spawns a micro-agent for a parallelizable atomic sub-task
+2. The micro-agent is registered with the Execution Runtime Control Plane (increments active count)
+3. If `max_micro_agents = 256` are already active, new micro-agents enter a bounded queue
+4. On task completion, the micro-agent is deregistered and its resources are released
+5. Parent agent receives result and continues coordination
+
+Micro-agents are ephemeral — they do not persist beyond their assigned atomic task.
 
 ### 4. Autonomous Execution Engine
 
@@ -1154,18 +1316,7 @@ Routing inputs:
 
 - **Task Graph Engine**: Converts structured plans and autonomous missions into dependency-aware execution DAGs.
 
-#### Task Identity Model
-
-Each task must include:
-
-- task_id (globally unique)
-- mission_id
-- parent_task_id
-- PSG snapshot version
-- assigned agent_id
-- task_type ∈ {build, simulation, code_generation, verification}
-
-All execution, telemetry, and mutations must reference task_id.
+> **Note:** The canonical Task Identity Model is defined in the **Task Graph Formal Model** section above. All execution, telemetry, and mutations must reference `task_id`. See Task Graph Formal Model → Task Identity Model.
 
 - **Global Task Queue**:
 
@@ -1183,6 +1334,7 @@ Responsibilities:
 STRICT:
 
 - does NOT perform scheduling decisions
+
 - **Worker Manager**: Requests worker process creation via the Execution Runtime Control Plane and manages assigned worker lifecycles without direct process ownership.
 
 Note:
@@ -1211,7 +1363,9 @@ Accepts structured missions from the Mission Scheduler and converts them into ta
 
 #### Tool Execution Layer
 
-The Tool Execution Layer provides a controlled interface for agents to interact with external systems and development tools. All tool invocations pass through the Tool Authority Gateway before entering the Tool Execution Layer.
+The Tool Execution Layer provides a controlled interface for agents to interact with external systems and development tools. All tool invocations pass through the Tool Authority Gateway before entering the Tool Execution Layer. 
+
+> **Autonomous Module Hosting:** The curated set of **27 autonomous modules** (listed in Section 2) are physically instantiated as **standard libraries** within the Tool Execution Layer. They are strictly bounded by the Tool Authority Gateway and possess **no autonomous cognitive authority**. All their actions must pass through the Governance Enforcement Interface; they cannot initiate tasks, bypass checkpoints, or mutate the PSG.
 
 Capabilities include:
 
@@ -1234,13 +1388,14 @@ Responsibilities include:
 - Agent concurrency control
 - Model routing based strictly on capability and task requirements (no cost-based routing)
 - GPU/CPU allocation
-- Task prioritization is strictly determined by priority_score and dependency constraints.
+- Task prioritization is strictly determined by `task_priority_score` and dependency constraints.
 
 Resource Scheduling Constraint:
 
 Scheduling inputs:
 
-- priority_score
+- task_priority_score (drives task execution order)
+- mission_priority_score (drives mission queue ordering only, not task scheduling)
 - task dependencies
 
 Scheduling MUST NOT:
@@ -1257,10 +1412,30 @@ Scheduling MAY:
 This ensures stable operation when large numbers of agents run simultaneously.
 
 - **Internal Mechanisms**:
-  - **Parallelism Engine**: Worker pool management and rule-based task coordination.
+  - **Parallelism Engine (Single Active Transaction)**: While AI planning and code generation can occur concurrently across massive worker pools, all filesystem mutation and toolchain invocation is strictly serialized. The Orchestrator processes exactly one `ConstructionTransaction` at a time to mathematically eliminate race conditions and corrupted builds.
+  - **Resource-Aware Adaptive Compilation**: Before initiating heavily parallelized worker pools or memory-intensive compilation tasks (e.g., Webpack, Gradle), the Execution Engine telemeters host OS hardware state. If available RAM or disk space is fatally low, AstraBuild automatically throttles parallel execution to a single core and disables memory-intensive caching, trading speed for structural stability to avert host OS crashes.
   - **Context Isolation**: Precision-context provisioning for workers to maximize speed and minimize hallucination.
   - **Incremental Execution Mode**: Supports fine-grained execution cycles for micro-missions without triggering full task graph recomputation.
-  - **Failure Handling**: Staging of retries and automated debugging hand-off for crashed tasks.
+  - **Failure Handling & API Degradation Pauses (The Exponential Fault Contract)**: Staging of retries and automated debugging hand-off for crashed tasks. Because AstraBuild relies on user-configured external AI providers (OpenRouter, OpenAI), it implements a strict fault-tolerance bridge. On receiving a `429 Too Many Requests` or `5xx` error, the local AI Mini Service executes a silent exponential backoff loop (`2s → 4s → 8s → 16s → 30s max`). If the connection fails 10 consecutive times, the Orchestrator transitions to a Fail-Closed `AI_SERVICE_UNAVAILABLE` state, freezing the sandbox to prevent hallucinated fallback code until the user's cloud provider recovers.
+
+#### Deterministic Build Pipeline & Toolchain Isolation
+
+To guarantee reproducibility and prevent environment-specific build failures, the Execution Engine strictly enforces the following toolchain invariants across all compilation targets (Web, Windows, Mobile, Backend):
+
+- **Zero-Host-Dependency Invariant (Bundling Mandate)**: AstraBuild must never rely on globally installed SDKs, runtimes, or compilers (e.g., host Node.js, .NET SDK, Java) on the user's machine. The Execution Engine pulls from its own isolated, bundled toolchain environments before initiating any build task, completely ignoring the host OS `PATH`.
+- **Universal Toolchain Integrity & Locking (`toolchain.lock.json`)**: Every workspace requires a locked manifest pinning the exact version and SHA-256 hash of all required compilers and build tools. Before execution, the Toolchain Integrity Validator verifies these compiler hashes to prevent tampering or corruption.
+- **Environment Snapshot Generation (`build_env.json`)**: Before invoking any compiler, the builder captures the exact state of the isolated environment (compiler flags, injected environment variables, and toolchain hashes) into an immutable snapshot. This ensures post-mortem forensic debugging if a build becomes non-deterministic.
+- **Artifact Reproducibility Pipeline**: To mathematically prove determinism, the build pipeline enforces a strict input/output lineage:
+  1. Hash inputs (`build_inputs.json` storing spec hashes and source tree hashes).
+  2. Invoke locked toolchain in an isolated sandbox.
+  3. Hash outputs (`build_outputs.json` storing the exact hash of the generated `.apk`, `.exe`, or web bundle).
+- **Automated EULA & License Redistribution Management**: To maintain legal compliance without blocking autonomous execution, the Execution Engine maintains a centralized EULA management subsystem that logs and tracks license acceptances for bundled SDKs, ensuring enterprise safety.
+- **"Clean Room" Process Launch Contract**: To prevent host environment leaks, the Execution Engine is forbidden from inheriting environment variables when spawning compiler processes. It must forcefully wipe the inherited environment (e.g., `Environment.Clear()`) and reconstruct the `PATH` and variables entirely from scratch using only the isolated toolchains.
+- **Strict Cache & Temp Workspace Isolation**: Compilers (like `npm`, `gradle`, `nuget`) silently rely on global user caches (e.g., `~/.npm`), which causes parallel agent builds to corrupt each other. AstraBuild aggressively overrides these variables (e.g., `NPM_CONFIG_CACHE`, `GRADLE_USER_HOME`) to trap all temporal files inside the isolated project workspace, ensuring zero race conditions.
+- **Pre-Flight Isolation Verification**: Before AstraBuild executes its first build task, an Isolation Verifier spawns a sandbox probe to guarantee no host system paths (like a user's global Node or Python path) have leaked. If external paths are detected, the system raises a fatal integrity error before any architecture corruption can occur.
+- **The "True Binary" Preview Invariant**: Previews generated by AstraBuild are never superficial DOM simulations. A preview is built from the same source and toolchain that would be used for production, ensuring 100% execution fidelity. For web targets, this may be a development server running the compiled assets; for native targets, it is the actual compiled binary running inside an isolated sandbox.
+- **The Security Consent Boundary (Sandbox ACL Jail)**: Because AstraBuild generates real binaries, it operates on a "fail-closed" model. Before launching any generated application that requests system capabilities (network, filesystem) outside of a read-only degraded mode, the system strictly halts and requires explicit human operator consent. Even when consent is granted, the app process is launched under a constrained OS-level jail (Job Objects/cgroups) configured with a strict "Shell Deny-List", physically revoking its ability to spawn terminal processes (`cmd.exe`, `powershell`, `bash`, `sh`) to neutralize malicious hallucinations.
+- **The Graceful Sandbox Degradation Contract**: Windows Sandbox isolation is an OPTIONAL execution environment (dependent on OS edition like Pro/Enterprise). The system MUST handle sandbox unavailability gracefully. If the host machine lacks the required virtualization features, AstraBuild safely degrades to Direct Execution mode and emits a Warning Toast to the user, ensuring the app builder never fatally blocks execution due to missing OS features.
 
 ### 5. Code Intelligence & Optimization Layer
 
@@ -1275,27 +1450,39 @@ Advanced reasoning over the entire codebase to ensure safe growth:
 
 ### 5.1 AI Coding Engine (The Structural Transformation Pipeline)
 
-To ensure safe edits across 1000+ file projects, AstraBuild utilizes a structured engine instead of free-form generation.
+**CORE PRINCIPLE: No Unstructured Code Manipulation.** AstraBuild utilizes a strictly verifiable, AST-governed engine instead of free-form LLM generation. To ensure mathematically safe edits across 1000+ file projects, the AI Coding Engine enforces 5 absolute invariants:
+
+1. **The Code Intelligence Invariant (AST Mutation Mandate)**: The AI is **STRICTLY FORBIDDEN** from using Regex or raw "String Search/Replace" to mutate source code. All agent patch intents MUST be routed through an Abstract Syntax Tree (AST) compiler engine (e.g., Roslyn for C#, Babel for JS/TS) which mathematically guarantees the syntactic correctness of the proposed edit *before* writing any text to the physical hard drive. Raw file overwrite by an LLM is physically blocked.
+2. **The "Blast Radius" Ceiling (Mutation Guard)**: To prevent catastrophic hallucination rewrites, the system imposes a deterministic ceiling on every task. Before an AST patch is committed, an `ImpactAnalyzer` calculates the blast radius. If a single agent task attempts to modify more than `MaxNodesModified = 100` AST nodes or impact more than `MaxAffectedSymbols = 50`, the Orchestrator instantly halts the transaction and forces the AI into a sub-task decomposition cycle.
+3. **Hidden Version Control Invariant (Time Travel Abstraction)**: The user NEVER interacts with Git or version control CLI. Instead, AstraBuild operates a completely hidden `.sync_git/` repository. The engine silently triggers atomic commits at 4 strict lifecycle phases: *Pre-Generation*, *Post-Patch*, *Build Success*, and *System Reset*. This ensures that if the system gets trapped in a bug loop, or the user clicks "Restore", the backend executes a flawless chronological rollback—abstracting away the violence of version control into a calm, timeline UI.
+4. **The Role-Based File Sandbox Contract**: For role-based file sandboxing, see Agent Safety Boundaries in Section 3.
+5. **The TOCTOU Preventative Hashing Invariant**: To prevent "Time-of-Check to Time-of-Use" corruption (where a file changes while an agent is generating a patch), the Execution Engine computes a SHA-256 `bundle_hash` of the exact lexicographical file state sent to the LLM. Right before the AST patch is applied, the hash is re-computed. If the hashes differ, the patch is instantly aborted.
+
+> **Concurrency Execution Ordering Rule (Strict)**: 
+> `PATCH → INDEX → BUILD → COMMIT` 
+> The system operates on a Single-Writer, Multi-Reader lock. A patch cannot be committed to the Time Travel history unless it has successfully passed the AST Indexer and the Compiler Build.
+
+**Operational Pipeline:**
 
 1. **Precision Retrieval**: Locates modified files via semantic search and dependency traversal.
 2. **Atomic Context Builder**: Injects specific file segments and symbol definitions instead of full files.
-3. **Structured Patch Generator**: Produces atomic diffs (Search/Replace blocks) to minimize side effects.
-4. **Structural Validator**: Performs syntax checks and dependency audits *before* any file is touched.
-5. **Patch Applier & Merge Manager**: Safely applies validated diffs with built-in conflict resolution and atomic commits.
+3. **Two-Phase Constraint Generator**: Enforces a strict two-phase LLM response: Phase 1 (Silent Analysis) where the agent emits its reasoning, and Phase 2 (Code Payload) where it emits the diff. The Orchestrator mathematically discards Phase 1 and *only* executes Phase 2, permanently preventing "chatty" responses from breaking the parser.
+4. **AST Patch Generator**: Produces verifiable AST node replacements (not string diffs).
+5. **Impact Analyzer**: Runs the Blast Radius calculation to approve or reject the patch scale.
+6. **Structural Validator (Banned Path Integrity Lock)**: Enforces a strict `BannedPaths` matrix, mathematically rejecting any AI patch that attempts to mutate compiled output directories (`node_modules/`, `bin/`, `obj/`, `dist/`), the hidden `.sync_git/` database, or internal state files. 
+7. **Patch Applier & Merge Manager**: Applies the AST transformation and invokes the Formatter to emit the final code to disk.
 
-5. **Platform Code Generator**
+8. **Platform Code Generator**
    - Generates platform-specific implementations from abstract definitions
    - Maintains consistency across:
      - UI behavior
      - API usage
      - state management
 
-6. **Cross-Platform Diff Synchronizer**
+9. **Cross-Platform Diff Synchronizer**
    - Propagates changes across all platform implementations
    - Prevents divergence between web, mobile, and desktop codebases
 
-> [!NOTE]
-> **Hybrid Evolution Strategy**: Global reasoning is performed using full-context architectural awareness from the Project State Graph, while code modifications are executed as precision patches through the AI Coding Engine. This ensures architectural purity while preventing the instability of full-project rewrites, allowing for safe, incremental growth in massive codebases.
 
 - **Internal Mechanisms**:
   - **Structural Intelligence**: AST generation, control-flow mapping, and data-flow analysis.
@@ -1314,6 +1501,15 @@ Virtual runtime simulator that allows the AI to predict the impact of code chang
 All non-trivial code or architecture changes MUST pass through Change Simulation Layer before execution.
 
 Bypass is a governance violation.
+
+**Definition — Non-Trivial Change:**
+A change is considered non-trivial if it meets ANY of the following criteria:
+- Affects more than 3 files
+- Modifies a core architecture component (service boundary, API contract, database schema)
+- Crosses a service or module boundary
+- Has a `risk_level ≥ 1` as determined by the Structural Validator
+
+Single-line cosmetic fixes (formatting, comments) within one file are trivial. **However, to strictly adhere to the Global Execution Invariant, they DO NOT bypass simulation.** Instead, the Simulation Layer processes them as an `O(1)` zero-cost pass-through, instantly returning `risk_level = 0` without initializing the heavy virtual runtime, ensuring the linear execution geometry is never broken.
 
 Key capabilities:
 - Static code analysis of proposed changes
@@ -1382,6 +1578,15 @@ Replay execution restores PSG state in isolation using snapshot loading and does
   - recorded and replayed
 
 Ensures deterministic replay.
+
+**Model Response Recording & Replay**
+
+AI model responses are inherently non-deterministic. To ensure replay correctness:
+
+- **During normal execution (The Locked AI Parameter Contract):** All model inference calls to the AI Service Layer strictly hardcode the following API parameters to mathematically prevent creative hallucination and guarantee reproducibility: `temperature = 0.0`, `top_p = 1.0`, `presence_penalty = 0.0`, and `frequency_penalty = 0.0`. These are hardcoded at the HTTP bridge level and cannot be overridden by user prompts. They are always combined with a fixed deterministic seed.
+- **During replay mode:** Responses are served from a **Response Cache** keyed by `(input_hash, deterministic_seed, model_id)`. No live model inference occurs during replay
+- **Cache miss handling:** If a cached response does not exist and replay is active, execution is paused and flagged as `replay_incomplete`. Live model call is NOT made during replay
+- **Response Cache** is stored as part of the Execution Snapshot Engine and is versioned alongside mission snapshots
 
 **Time-Travel Debugging Interface**
 Allows inspection of system state at any point in execution history without mutating current state.
@@ -1515,12 +1720,9 @@ Capabilities:
   - APIs
   - data flow
   - infrastructure
-
 - Supports intervention simulation:
   - "if X changes → what breaks?"
-
 - Propagates impact across graph layers
-
 - Enables predictive failure detection (not just reactive RCA)
 
 Used for:
@@ -1530,8 +1732,32 @@ Used for:
 - debugging root-cause validation
 
 This upgrades the system from:
-
 reactive debugging → predictive reasoning
+
+#### Reasoning Engines Integration
+
+The 18 reasoning engines are integrated into the Architecture Intelligence System as specialised components, each adapted to AstraBuild's deterministic, cost‑neutral framework:
+
+- **Chain-of-Thought Engine** → Formal Reasoning Loop (Section 1)
+- **AST Parser** → Code Intelligence & Optimization Layer (Section 5)
+- **Agent Message Bus** → Control Plane Event Router (Section Autonomous System Control Plane)
+- **Architecture Graph** → Architecture Intelligence System – graph projections (Section 5.5)
+- **Self-Critique Engine** → Self-Critique Engine (Section 1)
+- **Intent Classifier** → Intent Reasoning (Section 1)
+- **Task Decomposer** → Planning Logic (Section 1)
+- **Tool Use Reasoning** → Tool Authority Gateway (Section 3)
+- **Self-Improving Reasoning** → Meta-Learning Engine (Section 7)
+- **Logical Inference Engine** → Causal Reasoning Engine (Section 5.5)
+- **Alternative Solutions Engine** → Latent Planning (Section Latent Planning)
+- **Prompt Normalizer** → Interaction Intelligence Layer (Section 2.5)
+- **Reasoning Replay** → Deterministic Execution & Replay System (Section 5.3)
+- **Risk Prediction Engine** → Architecture Simulation Engine (Section 5.5)
+- **Failure Mode Analyzer** → Autonomous Debugging Loop (Section 6)
+- **Multi-Objective Reasoning** → Multi-Objective Optimization Engine (Section 5.5)
+- **Reflection Engine** → Self-Improving Reasoning (Section 7)
+- **Function Purpose Inference** → Comprehension Engine (Section 5)
+
+All these engines are **governed** by the same invariants as any other reasoning component: they must not perform cost‑based optimisation, they must emit deterministic traces, and they must pass through the Governance Enforcement Interface when their output would lead to a state mutation.
 
 #### Multi-Objective Optimization Engine
 
@@ -1601,6 +1827,18 @@ Outputs feed:
 
 ### 6. AI Quality Engineering & Production Self-Healing
 
+#### Universal Autonomous Repair & Anti-Looping Policies
+
+To prevent the autonomous execution engine from falling into infinite hallucination loops when facing compiler errors, AstraBuild enforces a rigid, 7-pillar debug constraints architecture across all language targets:
+
+1. **The "Pattern-First" Pre-Computation Layer**: Before sending an expensive compiler error (e.g., from Webpack, GCC, or Gradle) to the primary LLM interface, the Execution Engine checks a localized, deterministic `learned_repairs` table. If the error is a known framework quirk, the system applies the mathematically proven patch instantly. Only novel errors fall back to raw LLM inference.
+2. **Deterministic Error Hashing & Normalization**: To enable cross-session learning, all compiler outputs are passed through a Universal Normalizer that strips line numbers, temporary variable names, and absolute paths. This ensures that a `SyntaxError line 12` and `SyntaxError line 45` map to the identical mathematical `error_hash`, preventing the system from re-learning identical structural fixes.
+3. **Four-Tier Bug Classification & Escalation Risk**: The system rejects symmetric retry limits. Bugs are classified into budgets: **T1** (Config) gets 3 retries. **T2/T3** (Syntax/Logic) gets 5-7 retries. **T4** (Architectural / Structural) receives 0 retries in the execution loop—it instantly breaks the loop and triggers a full System Reset because the underlying `AppSpec` blueprint is fundamentally flawed.
+4. **Circular Error Protection (The Anti-Loop Invariant)**: The Orchestrator mathematically graphs the history of applied repairs. If applying Repair A introduces Error B, and fixing Error B brings back Error A, the engine detects the cycle. Upon detecting a circular dependency, the system intercepts the execution loop, triggers "Amnesia + Re-plan" (a targeted System Reset), and confronts the problem from a structurally distinct angle.
+5. **Pragmatic Crash Context Auto-Fix Loop**: Instead of integrating massive, fragile profiling tools (e.g., Minidumps or LLDB), AstraBuild relies on a lightweight stdout/stderr monitor. Upon any non-zero exit code during preview or testing, the engine captures the final 50 lines of output. This "Crash Context" is piped silently into the Fix Agent for auto-correction, shielding the user from the raw error traces.
+6. **Clean Build Cycle Escalation (The Ghost Bug Killer)**: To prevent AI token waste on environment-specific ghost errors, the Orchestrator intercepts repeated compiler failures. If the identical error fires twice, the system silently purges the project workspace cache (e.g., `node_modules/`, `obj/`, `bin/`) and executes a clean build *before* escalating the trace back to the LLM.
+7. **OS/Antivirus Interference Recovery**: Due to the rapid file-mutation nature of an autonomous builder, enterprise host machines will routinely lock files during compilation as OS-level security scanners (e.g., Windows Defender, macOS Gatekeeper) flag the sudden activity. Rather than assuming the AI wrote malformed code, the Orchestrator intercepts `EACCES` and `UnauthorizedAccessException` file-lock errors at the compiler level and executes a native exponential-backoff retry loop to "wait out" the antivirus scan before declaring a true failure.
+
 #### Formal Verification Layer
 
 For critical components:
@@ -1608,6 +1846,9 @@ For critical components:
 - invariant checking
 - contract validation
 - symbolic execution (limited scope)
+- **Generation-Time Safety Invariants**: Enforces strict memory and performance safety at the point of code generation, averting reliance on runtime profiling. Rejects agent proposals containing synchronous UI thread blocks, eager DI instantiation, or un-batched list generation loops.
+- **Strict Anti-Pattern Enforcement**: Rejects any proposal containing explicitly banned cross-framework anti-patterns (e.g., hardcoded design metrics instead of theme variables, unhandled data bindings, or regex-based DOM parsing).
+- **Headless UI Binding Validation**: Before launching any live UI preview (e.g., React, DOM, Android XML), AstraBuild executes a static headless parse over the UI architecture to mathematically prove all component bindings (like `onClick={submit}`) map to existing logical methods. This averts 80% of "dead button" hallucination bugs before runtime.
 
 Ensures correctness beyond testing.
 
@@ -1638,11 +1879,12 @@ This system powers:
 
 The system maintains its own quality through a deterministic feedback loop and production-level monitoring:
 
-- **Test Generation & Management Engine**: Automatically writes unit, integration, and E2E tests based on requirements and code structure.
+- **Test Generation & Management Engine (The Zero-Trust Coverage Invariant)**: Automatically writes unit, integration, and E2E tests based on requirements and code structure. However, the Orchestrator enforces a mathematical **Deterministic Coverage Floor** (e.g., 80% Branch Coverage). If the AST code patch passes compilation but fails to hit the mathematical coverage threshold via a physical coverage engine (e.g., Coverlet, Istanbul), the build is objectively rejected before commit. The AI cannot fake a passing test suite.
 - **Autonomous Debugging Loop**: The core "Self-Correction" cycle (Execute-Detect-Analyze-Repair).
 - **Runtime Telemetry & Self-Healing**: Connects to the deployed app's monitoring (logs, metrics) to detect and patch production anomalies automatically.
-- **Security & Compliance Automation**: Performs SAST/DAST scanning and ensures regulatory compliance with standards including GDPR, HIPAA, and OWASP Top 10 in every build.
+- **Security & Compliance Automation (The Cryptographic Determinism Rule)**: Performs SAST/DAST scanning and ensures regulatory compliance. *Crucially*, the AI is **physically barred** from rolling its own cryptographic or authentication implementations. For any identity/auth requirements, the AI MUST pull from a hardcoded, mathematically verified Auth template (e.g., ASP.NET Identity with PBKDF2, JWT with RS256). Any AST patch attempting to write a custom encryption loop or import raw crypto libraries outside of the approved shell is instantly rejected by the BannedPaths matrix.
 - **Verification Agents**: A specialized tier of high-reasoning audit agents that verify the output of peer agents (logic, security, styling) before any proposal is merged.
+- **The ASCII Exit Token Protocol**: When a Verification Agent (or any reading agent) determines a file needs no modifications, it is strictly forbidden from writing conversational approvals like "Looks good" or "No issues". The agent MUST output the exact formulation `NO_CHANGES_REQUIRED`. Any deviation, including trailing whitespace, triggers an automatic parser rejection.
 
 **Truth Evaluation Layer**
 
@@ -1683,7 +1925,10 @@ Establishes objective correctness validation:
 #### 6.5 Memory, Learning & Safety
 
 - **Operational Memory Store**: Stores debugging memory, reasoning cache, and runtime learning to maximize repair speed and accuracy.
-- **Safety Safeguards**: Implements strict retry thresholds (retry_limit_per_task = 20), automatic rollbacks on detected failure loops, and sandboxed execution boundaries to prevent recursive infrastructure damage.
+- **The Absolute Division of Retry Authority (The Anti-Failure Loop)**: The Orchestrator enforces a strict mechanical division in bug resolution. **Cycles 1-9** are owned exclusively by the AI Construction Engine, which exercises creative freedom to escalate between agents and adapt code logic. At **Cycle 10**, the Runtime Safety Kernel physically usurps control. It rolls back the filesystem to `PreMutationSnapshotId`, triggers **Forced AI Amnesia** (wiping all task-scoped memory), and mandates the system take a structurally distinct architectural approach. 
+- **The Infinite Iteration Mandate**: There is NO terminal "FAILED" state in AstraBuild's UI. Missions may be aborted internally after exhausting retries (e.g., Cycle 10 System Reset), but the UI never presents a 'FAILED' state; instead, it returns to `SYSTEM_IDLE` or prompts for user intervention. The only mechanism to halt execution completely is explicit cancellation by the human operator.
+- **The Hardware IPC STOP Contract**: When a human operator clicks "Cancel/STOP", AstraBuild does not rely on graceful software flags (which a stuck AI loop might ignore). Instead, the C# Host instantly severs the physical Named Pipe connecting it to the Node.js Runtime, immediately blinding and paralyzing the AI process. The Host then physically kills the Runtime process tree, logs the exact `IPC_STOP` generation phase to the `AuditLog` for safety review, and restores the project to the pre-generation snapshot.
+- **Unbounded Environment Recovery**: Unlike code mutations, environmental loops (e.g., low disk space, missing SDKs, NuGet cache corruption) trigger continuous retries indefinitely while prompting the user for manual intervention. The system never gives up on environmental failures on its own.
 
 ### 7. Memory, Knowledge & Meta-Learning Layer
 
@@ -1720,9 +1965,32 @@ Memory usage constraint:
 
 Memory is READ-ONLY influence, NEVER a mutation source.
 
+#### Memory Creation Flow
+
+New memory entries are created only after successful mission completion via a controlled write path:
+
+1. Mission completes successfully
+2. Autonomous Feedback Loop generates a structured memory record (outcome, pattern, agent, mission_id)
+3. A dedicated **Memory Recorder Agent** submits the memory record as an Agent Proposal
+
+   > **Memory Recorder Agent:** This is a **special-purpose ephemeral agent** spawned on-demand by the Meta-Learning Engine after mission completion. It is NOT one of the 34 logical agent roles — it is a short-lived functional sub-agent with no persistent existence. It follows the full Agent Proposal → Governance path but is not assigned to any cluster.
+4. Proposal passes Governance Enforcement Interface
+5. **Memory Layer Gateway** writes the entry to the Memory Layer
+
+**Memory Layer Gateway:** A dedicated write controller for the Memory Layer, separate from the PSG Mutation Gateway. It accepts validated memory proposals from the Governance Enforcement Interface (specifically the Pre-Simulation checkpoint, as memory records bypass execution simulation) and persists them to the Memory Layer only. It cannot write to PSG core. This maintains the separation defined in the Logical PSG Decomposition.
+
+No direct memory writes are permitted outside this path.
+
 **Memory Trust Model**
 
+Memory entries in AstraBuild are non-authoritative. They are treated as probabilistic inputs to agent reasoning, not as ground truth. Each memory entry carries a `trust_score` that determines whether it may be injected into agent context. Trust is earned through repeated PSG validation and lost through staleness or invalidation.
+
 #### Memory Lifecycle Management
+
+To prevent AI context-window bloat and reasoning contamination, AstraBuild enforces a **4-Tier Memory Scoping Invariant**:
+- **GLOBAL_READONLY**: Persists for the duration of the Session (e.g. Standard Library, Project Context).
+- **TASK_SCOPED**: Shared only within the current task. Retained during standard retries (1-9), but forcibly wiped upon `SYSTEM_RESET` (Cycle 10+) to induce Forced AI Amnesia and guarantee a structurally new approach.
+- **RETRY_SCOPED** & **AGENT_SCOPED**: Private scratchpads that are aggressively wiped immediately after every single attempt (Success or Failure) to prevent error cascading across attempts.
 
 Each memory entry includes:
 
@@ -1734,7 +2002,7 @@ Policies:
 
 Memory Eviction Rule:
 
-- IF usage_frequency = 0 for 100 consecutive missions → trust_score = 0
+- IF usage_frequency = 0 for 100 consecutive missions → trust_score = 0 AND entry is marked for deletion on next compaction cycle.
 Memory Update Rules:
 
 IF PSG_validation = 0 → trust_score = 0
@@ -1877,6 +2145,23 @@ Checks include:
 - Anti-hallucination validation
 - Cost contamination detection
 
+#### Governance Rejection Handling
+
+When a governance check returns `decision = 0`:
+
+1. The action is **immediately blocked** — no partial execution occurs
+2. The rejection reason is logged to the Governance Transparency Layer
+3. The proposing agent is notified with the blocking reason
+4. The proposal is **discarded** — it does not remain in any queue
+
+Recovery path (automatic):
+
+- If the rejection indicates a flawed proposal → Planning Engine is notified to generate a revised proposal
+- If the rejection indicates a fundamental mission design flaw → Mission Scheduler marks the mission as `blocked` and triggers re-planning via the Autonomous Planning Loop
+- If re-planning fails after `retry_limit_per_mission = 3` → Mission is aborted and logged
+
+No silent failures. All rejections are observable, logged, and traceable.
+
 ### Governance Ordering Guarantee
 
 Governance Enforcement Interface operates at THREE mandatory checkpoints:
@@ -1969,17 +2254,23 @@ This ensures system resilience under large-scale autonomous execution.
 
 **System Identity Lock**
 
-Defines immutable core system constraints:
+Defines immutable core system constraints.
 
-The following components cannot be modified by any agent:
+**Immutable Core (cannot be modified by any agent or governance policy):**
 - Project State Graph schema
-- Governance Enforcement Interface
+- Governance Enforcement Interface core validation logic
 - Execution authority hierarchy
 - Safety rules and validation layers
 
-Any attempt to mutate these components is automatically rejected.
+**Updatable Governance Policies (can evolve via governance-approved process):**
+- Architecture pattern allowlists and blocklists
+- Agent permission assignments
+- Simulation thresholds and risk scoring calibration
+- Mission generation heuristics
 
-This prevents uncontrolled system self-modification and preserves architectural integrity.
+Policy updates must pass the Governance Enforcement Interface (submitted as a special `policy_update` proposal type). Core rules cannot be targeted by any proposal type.
+
+Any attempt to mutate core components is automatically rejected.
 
 ### Governance Transparency Layer
 
@@ -1993,14 +2284,29 @@ While internal governance is fully automated, AstraBuild exposes an abstracted v
 - Confidence scores and risk indicators for each action
 - Execution audit logs
 - Decision lock status (locked/unlocked)
+- **`/api/autonomous/mechanisms`**: A dedicated REST/RPC endpoint exposing the internal state, toggle status, and latency of all active embedded subsystems and reasoning engines. This endpoint is read‑only, requires authentication, and is only available in Developer Mode. It is used for diagnostic and audit purposes.
 
 This ensures the user understands *why* actions occur or are prevented, without exposing internal complexity.
+
+#### AI Decision Trace
+
+In Developer Mode, the Governance Transparency Layer exposes a structured, timestamped trace of every AI decision made during an active mission:
+
+- **Timestamp** — when the decision was made
+- **Agent** — which agent produced the proposal
+- **Decision Type** — code generation, architecture mutation, governance rejection, retry trigger, etc.
+- **Rationale** — the reasoning that produced the decision (human-readable)
+- **Context** — expandable structured data (PSG state, scores, constraints at time of decision)
+
+This trace is read-only, exportable, and immutable. It cannot be used to replay or mutate system state.
+
+Default mode: hidden. Developer Mode: visible as a timeline panel.
 
 ### Latent Planning & Multi-World Exploration Layer
 
 The system does NOT rely on single-path planning.
 
-It generates and evaluates multiple alternative futures before execution.
+It generates and evaluates multiple alternative futures before execution. By formally integrating the **18 Reasoning Engines** (including *Chain-of-Thought*, *Intent Classifier*, *Self-Critique Engine*, and *Logical Inference*), the system mathematically models multiple architectural pathways simultaneously.
 
 **Parallel Plan Universe Generator**
 - Generates multiple candidate architectures and execution plans
@@ -2018,7 +2324,7 @@ It generates and evaluates multiple alternative futures before execution.
 
 Each plan produces:
 
-- correctness_score (0 or 1)
+- correctness_score ∈ {0,1}
 - integrity_score ∈ {0,1}
 - reliability_score ∈ {0,1}
 - performance_score ∈ {0,1}
@@ -2055,7 +2361,7 @@ This ensures:
 
 ## Multi-Agent Topology Cluster Map
 
-To manage **34 logical agent roles (expanded into 48 executable agent instances based on fixed decomposition rules defined by Task Graph Engine)** without chaos, AstraBuild organizes specialized roles into **Functional Clusters** overseen by the Orchestration Core. Specialized agents dynamically spawn ephemeral micro-agents for atomic tasks, scaling to hundreds of concurrent operations.
+To manage **34 logical agent roles (expanded into executable agent instances based on fixed decomposition rules defined by Task Graph Engine — see Agent Instantiation Model below)** without chaos, AstraBuild organizes specialized roles into **Functional Clusters** overseen by the Orchestration Core. Specialized agents dynamically spawn ephemeral micro-agents for atomic tasks, scaling to hundreds of concurrent operations.
 
 Result:
 
@@ -2127,10 +2433,10 @@ Examples:
 
 ### 6. Deployment Cluster (4 Agents)
 
-**Note**: The Deployment Cluster consists of AI agents responsible for generating and validating deployment configurations. This is distinct from the Built-in Deployment Infrastructure, which is the runtime environment used to execute and host deployed applications.
+**Note**: The Deployment Cluster consists of AI agents responsible for generating and validating deployment configurations. This is distinct from the Built-in Deployment Infrastructure, which is the runtime environment used to execute and host deployed applications. Agent names are prefixed with 'Configurator' to distinguish them from infrastructure components with similar names.
 
-- **Build Manager**: Orchestrates the compilation and packaging of binaries.
-- **Container Builder**: Generates Docker-less, slimmed-down application images.
+- **Build Configurator Agent**: Orchestrates the compilation and packaging configuration for binaries.
+- **Deployment Configurator Agent**: Generates Docker-less deployment image configurations. (Infrastructure counterpart: Container Builder in Built-in Deployment Infrastructure)
 - **CI/CD Pipeline Manager**: Implements CI/CD and cloud-native configuration.
 - **Deployment Verifier**: Conducts smoke-tests and health-checks post-rollout.
 
@@ -2197,15 +2503,106 @@ There are no user role hierarchies, teams, or permission systems for humans.
 - **Mobile & Cross-Platform Apps**: React Native and Flutter.
 - **Native Platform Support**:
   - Android (Jetpack Compose)
-  - Linux (GTK)
 
 Apple platforms (macOS/iOS) are intentionally excluded in the current system scope.
+
+**Framework-Neutral UX Invariant:**
+AstraBuild adapts its UX based on the selected framework. There is no privileged "default" framework. 
+- *Modern/XAML*: Live visual preview + code overview.
+- *Classic/Imperative (WinForms/Win32)*: Code-view only + Full Launch capability.
+- *Console*: Stdout capture + Code View + Full Launch.
+The generated outputs are always standard configuration files without proprietary lock-in.
 
 ### No Templates Required
 
 - Pure AI-generated code from requirements.
 - **Rule-based architecture planning**.
 - **Self-improving code generation**.
+
+### Deterministic Packaging Invariants
+
+To guarantee that final build artifacts (e.g., `.MSIX`, `.APK`) are completely verifiable, AstraBuild enforces strict packaging rules:
+- **Deterministic Version Increment Rule (Anti-Inflation)**: The application's version number (`Package.appxmanifest`, `package.json`) is ONLY allowed to increment if the **Runtime Safety Kernel** officially confirms a successful code patch or capability injection. If the AI hallucinates a structural change that gets rejected by the compiler, the version is mathematically locked from incrementing. Version precedence is strictly: Major (Schema Break) > Minor (Capability) > Patch (Code).
+
+### Permission & Capability Validation
+
+AstraBuild ensures valid packaging by scanning the AST for required OS capabilities:
+- **Execution Validation:** If the runtime sandbox crashes due to a missing OS capability requested by the generated code (e.g., `UnauthorizedAccessException`), the Orchestrator halts and forces the AI agent to explicitly write a patch updating the project's manifest files. The builder will not magically inject or modify the user's codebase.
+
+### Project Time Travel (Snapshots)
+
+Every successful build creates an immutable Snapshot via a hidden, local Git-based state mechanism.
+- Users can browse a visual timeline of generations and refinements.
+- Clicking "Restore" instantly reverts the codebase, databases, and dependencies to that exact state.
+- Snapshots are lightweight and auto-pruned if disk space boundaries are reached.
+
+### Developer Mode & Progressive Disclosure
+
+AstraBuild operates in two presentation modes:
+
+**Simple Mode (Default):**
+Always visible: Prompt input, Mission progress indicator, Preview output, Export button, minimal status bar.
+Hidden by default: Mission graph, agent assignments, retry counters, build logs, governance detail.
+
+**Developer Mode (Toggle in Settings):**
+Reveals:
+- Build Monitor (real-time mission and task state visualization)
+- AI Decision Trace (full timeline of AI decisions, agents, and rationale)
+- Detailed status bar (active agents, mission count, retry counts)
+- Error codes with technical context in logs
+- Governance rejection detail
+
+Developer Mode is a toggle, not a separate app mode. All core functionality is identical; only the visibility layer changes.
+
+**Progressive Mastery Unlock:**
+After completing 3 or more projects, the system automatically unlocks the History tab and Project Diff view with a one-time contextual hint. Users earn capability access through usage, not by reading documentation.
+
+### Error Translation Model
+
+All internal system errors are translated into human-readable messages before surfacing to the user. Raw technical output (compiler errors, build failures, stack traces) is never displayed in Simple Mode.
+
+**Translation Policy:**
+
+| Internal Error | User-Facing Message |
+|---|---|
+| Build compilation failure | "The build encountered an issue. The system is correcting it automatically." |
+| Governance rejection | "This change was blocked by an architecture rule. Replanning in progress." |
+| Agent execution timeout | "This operation is taking longer than expected. Continuing with adjusted strategy." |
+| PSG conflict at commit | "A state conflict was detected. Rolling back and replanning the affected task." |
+| Dependency resolution failure | "A required dependency could not be resolved. The system will attempt an alternative configuration." |
+| Verification failure | "The output did not pass validation. Rebuilding with corrections." |
+
+**Rules:**
+- Never show raw compiler output, stack traces, or error codes in Simple Mode.
+- Never use blame language ("failed", "crashed", "broken").
+- Always describe what the system is doing next.
+- Developer Mode may expose raw details in a collapsible log panel.
+
+### First Launch Experience
+
+The entry point when no projects exist:
+
+- **What NOT to show:** Multi-step wizard, SDK configuration screens, feature tours, "Getting Started" guide, architecture diagrams before first build, **any screen that asks the user to install toolchains or SDKs**.
+
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│     What would you like to build?       │
+│                                         │
+│   [                                   ] │
+│                                         │
+│           [ Start Building ]            │
+│                                         │
+│  [Web App] [Dashboard] [API + Frontend] │
+│  [Mobile App] [CLI Tool] [Full-Stack]   │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**Psychological goals:** Power ("I can build anything"), Simplicity ("Just describe it"), Safety ("No setup required").
+
+
+**First Successful Build Moment:** Small non-blocking celebration animation on the preview panel. Brief message: "Your application is ready." + action buttons (Improve, Export, View Code, Add Feature). No fanfare for subsequent builds — only the first.
 
 ## Technical Stack
 
@@ -2237,12 +2634,23 @@ Apple platforms (macOS/iOS) are intentionally excluded in the current system sco
 
 ## Autonomous Operational Lifecycle
 
-1. User inputs requirements via natural language.
-2. AI analyzes and plans architecture.
+AstraBuild operates as a **continuous autonomous loop**, not a linear pipeline. The initial cycle begins with user-provided intent, but subsequent cycles are generated autonomously based on PSG state analysis.
+
+Initial Cycle:
+
+1. User provides requirements via natural language.
+2. System analyzes and plans architecture.
 3. Code generation and compilation.
 4. Automated testing and validation.
 5. Live preview and user feedback.
-6. Final deployment and optimization.
+6. Deployment.
+
+Continuous Autonomous Cycle (post-initial):
+
+- Opportunity Detection Engine continuously scans PSG
+- New missions generated autonomously
+- System evolves indefinitely until convergence criteria are met (see Goal Completion & Convergence Engine)
+- System does NOT stop after initial deployment
 
 ## Embedded Subsystems Architecture
 
@@ -2268,13 +2676,15 @@ AstraBuild operates as a fully self-contained ecosystem, embedding all necessary
 ### 3. Embedded Build Systems
 
 - **Universal Compilers**: Pre-configured toolchains for all supported languages.
-- **Cross-Compilation Engine**: Ability to build binaries for Windows, Linux, and Android internally.
+- **Cross-Compilation Engine**: Ability to build binaries for Windows and Android internally.
 
 ### 4. Sandboxed Execution Environment
 
 - **Isolated Filesystem**: Virtualized directory structures for secure code execution.
 - **Process Isolation**: Secure runtime boundaries separating generated applications from the core builder environment.
-- **Security Boundaries**: Automated firewalling and network isolation between generated services.
+- **Security Boundaries (The DPAPI Encryption Invariant)**: Automated firewalling and network isolation between generated services. Further, all AI API configurations are strictly encrypted via Windows DPAPI (`ai.config.enc`). The system is mathematically barred from storing AI keys in plaintext JSON, neutralizing any hallucinated supply-chain API key theft.
+- **The AI Capability Bridge (Job Object Containment & BYOK)**: The internal AI logic (Node.js/Bun) is compiled into a standalone, hidden `ai-service.exe`. It strictly enforces a "Bring Your Own Key" (BYOK) 3-Slot Routing model (Primary, Vision, Image Gen) to prevent proprietary SaaS lock-in. The Orchestrator wraps this background HTTP process in a native Windows "Job Object" hard-capped at 512MB RAM and 25% CPU, guaranteeing the AI background driver can never memory-leak or crash the host Operating System.
+- **Constitutional Provider Neutrality Rule**: AstraBuild guarantees that the generated applications are completely neutral to the underlying AI provider. The CI/CD pipeline of AstraBuild mathematically scans the AST of its own Orchestrator source code to forbid provider-specific branching logic (e.g., `if (provider === "openrouter") return planA`). This guarantees that a code blueprint generated with Provider A is structurally and architecturally identical to one generated with Provider B, permanently preventing LLM vendor lock-in.
 
 ### 5. Integrated Preview System (AI Debugging Observatory)
 
@@ -2300,7 +2710,7 @@ The preview system is not just a viewer; it is a **Feedback Sensor Network** tha
 - **Visual State Interpreter**: Converts UI screenshots into structured layout representations (component tree, spacing, hierarchy) for reasoning and validation
 - **Browser Automation Controller**: Provides a "Puppeteer-like" interface for agents to click buttons, fill forms, and run UI tests.
 - **UI Interaction Capture**: Feeds user events (clicks, navigation) back to the AI to understand application state.
-- **HMR & Live Reload Manager**: Orchestrates Hot Module Replacement and iframe refreshing to reflect code changes instantly.
+- **Live Reload Manager**: Orchestrates hot module reloading and iframe refreshing to reflect code changes instantly.
 
 #### 5.4 State Synchronization
 
@@ -2309,15 +2719,15 @@ The preview system is not just a viewer; it is a **Feedback Sensor Network** tha
 ### 6. Built-in Deployment Infrastructure
 
 - **Container Builder**: Internal Docker-less image generation.
-- **Local Cloud Runtime**: Micro-service orchestration for testing scale.
+- **Local Cloud Runtime (The Immutable IaC Mandate)**: Micro-service orchestration for testing scale. The AI *cannot* assume any environmental state or manually configure servers. It is strictly forced to emit a mathematically verifiable `deployment_manifest.json` containing exact port bindings, environment variables, and service topology. If this manifest doesn't pass a strict JSON-schema validation, the local cluster fundamentally refuses to boot the app. 
 - **Database Provisioning**: Self-managed instances of PostgreSQL, MongoDB, and Redis.
-- **Execution Runtime Control Plane**: A central orchestration layer that manages application processes, runtime containers, sandbox environments, rule-based port allocations, and automatic crash recovery.
+- **Execution Runtime Control Plane**: Manages application processes, runtime containers, sandbox environments, rule-based port allocations, and automatic crash recovery. See primary definition under Autonomous Execution Engine → Execution Runtime Control Plane.
 
 ## Self-Contained Operation
 
 AstraBuild is designed for "Zero-Dependency" operation. Unlike traditional builders that rely on the user's local machine environment, AstraBuild bundles its entire system:
 
-- **Offline Capable**: Once downloaded, it must build and test apps without an internet connection (using local LLMs and internal registries).
+- **Offline Capable**: Core build, test, and code generation runs without an internet connection (using local LLMs and internal registries). External knowledge features (Global Code Intelligence Network, CVE feeds) operate in degraded-but-functional fallback mode without internet.
 - **Environment Parity**: The build environment is identical across all installations, eliminating "it works on my machine" issues.
 - **Portable Backends**: Generated applications include their own slimmed-down runtimes for easy portability.
 
@@ -2335,17 +2745,19 @@ AstraBuild is designed for "Zero-Dependency" operation. Unlike traditional build
 
 ```mermaid
 graph TD
-    User --> Interaction[Interaction Layer]
+    subgraph Input ["User Entry (ONLY via Interaction Layer)"]
+        User --> Interaction[Interaction Layer]
+    end
 
     Interaction --> Planning[Planning Engine]
 
     Planning --> Proposal[Agent Proposal]
 
-    Proposal --> Gov1[Governance (Pre-Simulation)]
+    Proposal --> Gov1[Governance - Pre-Simulation]
 
     Gov1 --> Simulation[Change Simulation Layer]
 
-    Simulation --> Gov2[Governance (Post-Simulation)]
+    Simulation --> Gov2[Governance - Post-Simulation]
 
     Gov2 --> TaskGraph[Task Graph Engine]
 
@@ -2355,13 +2767,23 @@ graph TD
 
     Tools --> Verification[Verification Layer]
 
-    Verification --> Gov3[Governance (Pre-Commit)]
+    Verification --> Gov3[Governance - Pre-Commit]
 
     Gov3 --> PSGGateway[PSG Mutation Gateway]
 
     PSGGateway --> PSG[Project State Graph]
 
+    %% Memory Layer is written via its own Memory Layer Gateway (not PSG Mutation Gateway)
+    MemGateway[Memory Layer Gateway] --> Memory[Memory Layer]
+    Gov1 --> MemGateway
+
+    %% Feedback loops
     PSG --> Planning
+    PSG --> OpDet[Opportunity Detection Engine]
+    OpDet --> Planning
+    Memory --> Planning
+    Verification --> DebugLoop[Autonomous Debug Loop]
+    DebugLoop --> Planning
 ```
 
 ## Security Features
@@ -2413,7 +2835,7 @@ AstraBuild is designed to maximize execution stability and system throughput:
 
 ### Global Code Intelligence Network - Integration Strategy
 
-This section extends the Global Code Intelligence Network defined in Section 7.
+This section extends the Global Code Intelligence Network defined in Section 7 → Global Code Intelligence Integration.
 
 **Decision:** Global Code Intelligence Network is **INCLUDED** as a core capability.
 
@@ -2451,6 +2873,8 @@ Since AstraBuild uses internet-connected AI models for reasoning and code genera
 
 ## UI Abstraction Principle
 
+**The Zero-Friction First Boot Invariant**: AstraBuild mathematically prohibits manual setup wizards, SDK configuration tours, or multi-step onboarding. The very first screen presented to a new user MUST be a simple intent input field. The user starts building immediately. AI settings and environment variables are strictly relegated to secondary configuration panels.
+
 The user interface exposes:
 
 - System state (abstracted)
@@ -2467,6 +2891,24 @@ The UI intentionally hides:
 
 Goal:
 Maximize usability while preserving architectural truth.
+
+### Anti-Terror UX (Failure Psychology)
+
+The system is designed to never produce anxiety for the operator. Internal errors are treated as routine work, not system failures.
+
+**Never Show:**
+- Red error overlays or "Build Failed" banners.
+- Raw stack traces or MSBuild/compiler output by default.
+- Frozen UI states pointing to unresolved syntax logic.
+- Blame or catastrophic language ("Fatal Error", "Unhandled Exception").
+
+**Always Show:**
+- Animated feedback during recovery loops ("Optimizing…").
+- Cancel buttons to easily abort long operations safely.
+- Actionable next steps instead of dead-ends.
+- "We couldn't complete this" instead of "You broke the build."
+
+The system absorbs all the shock of development, presenting only calm, actionable states to the user.
 
 ## Layer Boundary Contracts
 
@@ -2508,49 +2950,4 @@ Excluded intentionally:
 
 These exclusions are deliberate to preserve full autonomy and architectural purity.
 
-## Final Verdict
 
-**System Status: ARCHITECTURALLY COMPLETE — PRE-PRODUCTION**
-
-The system architecture is complete.
-
-Pending before production:
-
-- agent concurrency stress testing
-- PSG scalability validation
-- deterministic replay validation at scale
-- multi-platform build validation
-- failure propagation testing
-
-The system is not yet production-hardened.
-
-The enhanced AstraBuild system demonstrates:
-
-- **Architectural Excellence**: Deep graph systems and formal verification ensure robust system design
-- **Autonomous Intelligence**: Advanced planning, reasoning, and optimization capabilities
-- **Security & Governance**: Comprehensive modular governance and anti-hallucination enforcement
-- **Operational Efficiency**: Optimized execution, simulation separation, and resource management
-- **Learning & Evolution**: Cross-project knowledge transfer and deterministic improvement
-- **Production Readiness**:
-
-The system satisfies all architectural, safety, and governance requirements.
-
-Production deployment requires:
-
-- concurrency validation under max_active_agents = 128
-- PSG validation at max_nodes = 1000000
-- deterministic replay validation across 100 consecutive missions
-- multi-platform build validation across all target compilers
-
-The system architecture is complete and internally consistent.
-
-However, production readiness requires:
-
-- large-scale concurrency validation
-- PSG performance validation at upper bounds
-- deterministic replay validation under high load
-- real-world deployment scenario testing
-
-The system is architecturally ready but not yet production-hardened.
-
-The AstraBuild system is now ready to deliver autonomous software development at scale with enterprise-grade reliability and security.
