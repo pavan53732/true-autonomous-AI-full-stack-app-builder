@@ -3146,6 +3146,7 @@ Excluded intentionally:
 - multi-user coordination systems
 - Phased Development Roadmap
 - AI-powered CLI interface within the application
+- Developer Mode
 
 These exclusions are deliberate to preserve full autonomy and architectural purity.
 
