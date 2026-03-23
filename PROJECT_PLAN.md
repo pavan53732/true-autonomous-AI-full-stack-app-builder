@@ -570,7 +570,7 @@ All other steps (Governance checkpoints, Simulation, Verification) are defined b
 
 - **Retry Logic**: Configurable retry limits with exponential backoff
 - **Fallback Paths**: Alternative execution routes when primary path fails
-- **Rollback Triggers**: Automatic rollback on critical failures
+- **Rollback Triggers**: Automatic rollback on critical failures. Rollback operations are **idempotent**; repeated execution of the same rollback produces the same final state without side effects. If rollback fails, the system retries up to 9 times over a total of 4.5 minutes. Each retry is idempotent. If all retries fail, the system enters Emergency Recovery Mode (see Section 9).
 - **Recovery Missions**: Autonomous re-planning for failed missions
 - **Deadlock Detection**: Cyclic dependency detection and resolution
 
@@ -983,7 +983,26 @@ These modules are native to AstraBuild and have been designed to obey the system
 | Agent Execution Sandbox | Isolate agent execution | Tool Execution Layer (Section 4) – Sandboxing | Already covered |
 | Code Quality Intelligence | Enforce code quality | Code Quality Intelligence System (Section 5.4) | Already covered |
 
-**Important:** All modules listed above that interact with external knowledge (e.g., API Reference Retriever) are strictly **read‑only** and **cached**. No code or proprietary information leaves the local environment.
+
+#### Pre‑Message Context Scan
+
+Before processing any user message, the Context Orchestration Engine automatically executes a 5‑step pipeline to ensure the AI has complete project knowledge:
+
+1. **Freshness Check (50ms)** – Compares last sync time with file system changes. If stale, triggers an incremental sync.
+2. **RAG Query (200ms)** – Performs semantic (vector DB) and keyword (BM25) search, merging results with Reciprocal Rank Fusion.
+3. **Knowledge Graph Query (150ms)** – Traverses dependencies (BFS, depth 3) to gather related nodes and impact analysis.
+4. **Metadata Scan (100ms)** – Collects file structure, database schema, and installed packages.
+5. **Context Assembly (50ms)** – Builds a structured JSON context package, optimised for token limits.
+
+**Total Overhead:** ~550ms (cold), ~150ms (warm), ~50ms (hot) with cache.
+
+**Token Overflow Handling:**  
+If the assembled context exceeds 90% of the model's context window, the system:
+- Compresses lower‑relevance context (e.g., file structure entries with low similarity scores).
+- If still over, summarises non‑critical metadata.
+- If still over, rejects the request with a user‑friendly message and suggests simplifying the query.
+
+The assembled context is injected into the AI system prompt, giving the agent full awareness of the current project state.
 
 **Hard Validation Layer (Anti-Hallucination Enforcement)**
 
@@ -1097,8 +1116,24 @@ Bridges the gap between user-provided intent, visual state, and system execution
   - risk_level ∈ {0,1,2}
   - Rollback availability
 
-- **Visual-to-PSG Consistency Enforcement**:
-  Ensures all UI-level modifications are reflected in and validated against the Project State Graph before persistence
+- **Visual-to-PSG Consistency Enforcement**: Ensures all UI-level modifications are reflected in and validated against the Project State Graph before persistence.
+
+#### Persona System
+
+AstraBuild allows users to optionally bias the AI's reasoning by selecting a persona. Personas influence the prioritisation of concerns but **never override governance rules or execution authority**.
+
+| Persona | Focus | Priority |
+|---------|-------|----------|
+| **Security** | Security concerns, vulnerability detection | Highest (1) |
+| **Architecture** | Architectural decisions, system design | High (2) |
+| **UI/UX** | User experience, interface design | Medium (3) |
+| **Debugging** | Error resolution, troubleshooting | Low (4) |
+
+**Conflict Resolution:**  
+If multiple personas conflict, the highest‑priority persona takes precedence. If no user decision is made within 5 minutes, the system automatically selects the highest‑priority persona and logs the timeout event.
+
+**Implementation:** Personas are injected as part of the system prompt and influence the reasoning chain but do not bypass any governance steps.
+
 
 ### 3. Multi-Agent Orchestration & Design Intelligence
 
@@ -1608,6 +1643,27 @@ This system consolidates all quality-related analysis to avoid duplication acros
 - Codebase risk scoring
 - Quality trend tracking over time
 
+
+#### Runtime Intelligence Enhancements
+
+In addition to static analysis, AstraBuild includes background runtime intelligence services:
+
+**Performance Profiler:**
+- Tracks method execution times, memory allocations, and database query performance.
+- Runs automatically in the background without user interaction.
+- Detects performance regressions (>20% slower) and logs them to the Observability Pipeline.
+- Integrates with BenchmarkDotNet to generate performance baselines.
+
+**Memory Leak Detection:**
+- Performs static analysis on generated code to identify:
+  - Unclosed streams (`FileStream`, `MemoryStream`, etc.).
+  - Undisposed `IDisposable` objects.
+  - Event handler leaks (subscribed but never unsubscribed).
+  - Large object allocations (>85KB) that may cause fragmentation.
+- When a potential leak is found, the system logs it and optionally suggests a fix (via auto‑fix if safe).
+
+Both services are **read‑only** and do not automatically modify code. Their output is available for the AI to use during mission planning and execution.
+
 This system feeds:
 - Verification Cluster
 - Refactor Agent
@@ -1837,7 +1893,55 @@ To prevent the autonomous execution engine from falling into infinite hallucinat
 4. **Circular Error Protection (The Anti-Loop Invariant)**: The Orchestrator mathematically graphs the history of applied repairs. If applying Repair A introduces Error B, and fixing Error B brings back Error A, the engine detects the cycle. Upon detecting a circular dependency, the system intercepts the execution loop, triggers "Amnesia + Re-plan" (a targeted System Reset), and confronts the problem from a structurally distinct angle.
 5. **Pragmatic Crash Context Auto-Fix Loop**: Instead of integrating massive, fragile profiling tools (e.g., Minidumps or LLDB), AstraBuild relies on a lightweight stdout/stderr monitor. Upon any non-zero exit code during preview or testing, the engine captures the final 50 lines of output. This "Crash Context" is piped silently into the Fix Agent for auto-correction, shielding the user from the raw error traces.
 6. **Clean Build Cycle Escalation (The Ghost Bug Killer)**: To prevent AI token waste on environment-specific ghost errors, the Orchestrator intercepts repeated compiler failures. If the identical error fires twice, the system silently purges the project workspace cache (e.g., `node_modules/`, `obj/`, `bin/`) and executes a clean build *before* escalating the trace back to the LLM.
+
 7. **OS/Antivirus Interference Recovery**: Due to the rapid file-mutation nature of an autonomous builder, enterprise host machines will routinely lock files during compilation as OS-level security scanners (e.g., Windows Defender, macOS Gatekeeper) flag the sudden activity. Rather than assuming the AI wrote malformed code, the Orchestrator intercepts `EACCES` and `UnauthorizedAccessException` file-lock errors at the compiler level and executes a native exponential-backoff retry loop to "wait out" the antivirus scan before declaring a true failure.
+
+#### Error Classification & Auto‑Fix
+
+AstraBuild implements a structured error classification system that enables autonomous recovery from common build and runtime errors.
+
+**Error Classification Codes:**
+
+| Code | Category | Description | Auto‑Fix |
+|------|----------|-------------|----------|
+| `SYNTAX_001` | Syntax | Missing semicolon | ✅ Yes |
+| `SYNTAX_002` | Syntax | Unbalanced brackets | ✅ Yes |
+| `SYNTAX_003` | Syntax | Invalid identifier | ⚠️ Suggest |
+| `LOGIC_001` | Logic | Infinite loop detected | ❌ No |
+| `LOGIC_002` | Logic | Dead code path | ⚠️ Suggest |
+| `LOGIC_003` | Logic | Null reference potential | ✅ Yes |
+| `DEP_001` | Dependency | Missing package | ✅ Yes |
+| `DEP_002` | Dependency | Version conflict | ⚠️ Suggest |
+| `DEP_003` | Dependency | Circular dependency | ❌ No |
+| `BUILD_001` | Build | Compilation failed | ⚠️ Suggest |
+| `BUILD_002` | Build | Resource not found | ✅ Yes |
+| `BUILD_003` | Build | Invalid configuration | ⚠️ Suggest |
+| `SEC_001` | Security | Hardcoded secret | ❌ No (manual) |
+| `SEC_002` | Security | SQL injection risk | ⚠️ Suggest |
+| `SEC_003` | Security | XSS vulnerability | ✅ Yes |
+
+**Auto‑Fix Ownership Matrix:**
+
+| Component | Error Detection | Auto‑Fix Generation | Fix Application | Audit Logging |
+|-----------|----------------|-------------------|----------------|---------------|
+| **Host** | Build errors, file system issues | ❌ Not authorized | ✅ Applies fixes | ✅ Logs all actions |
+| **Runtime** | Runtime errors, AI provider issues | ✅ Generates fixes | ❌ Not authorized | ✅ Logs generation |
+| **ErrorClassificationService** | Categorizes all errors | ❌ Coordinates only | ❌ No direct access | ✅ Central audit log |
+
+**Auto‑Fix Workflow:**
+1. **Error Detection** – Host or Runtime captures error with classification.
+2. **Auto‑Fix Generation** – Runtime generates a fix (code patch, configuration change) using AI.
+3. **Validation** – Fix is validated against blast radius limits and governance rules.
+4. **Application** – Host applies the fix, creating a rollback point before changes.
+5. **Audit** – All auto‑fix actions are logged to the Execution State Store.
+
+**Security Controls:**
+- Fixes are only applied if they pass the same Governance Enforcement Interface as any other action.
+- Critical fixes (affecting >5 files) require explicit user approval (part of diff queue).
+- Rollback points are created before every auto‑fix application.
+- Auto‑fix rate is limited to 10 per session to prevent runaway corrections.
+
+**Integration:** The Auto‑Fix system is fully integrated with the Autonomous Debugging Loop and the Governance Enforcement Interface.
 
 #### Formal Verification Layer
 
@@ -1927,6 +2031,58 @@ Establishes objective correctness validation:
 - **Operational Memory Store**: Stores debugging memory, reasoning cache, and runtime learning to maximize repair speed and accuracy.
 - **The Absolute Division of Retry Authority (The Anti-Failure Loop)**: The Orchestrator enforces a strict mechanical division in bug resolution. **Cycles 1-9** are owned exclusively by the AI Construction Engine, which exercises creative freedom to escalate between agents and adapt code logic. At **Cycle 10**, the Runtime Safety Kernel physically usurps control. It rolls back the filesystem to `PreMutationSnapshotId`, triggers **Forced AI Amnesia** (wiping all task-scoped memory), and mandates the system take a structurally distinct architectural approach. 
 - **The Infinite Iteration Mandate**: There is NO terminal "FAILED" state in AstraBuild's UI. Missions may be aborted internally after exhausting retries (e.g., Cycle 10 System Reset), but the UI never presents a 'FAILED' state; instead, it returns to `SYSTEM_IDLE` or prompts for user intervention. The only mechanism to halt execution completely is explicit cancellation by the human operator.
+
+#### STOP Mechanism & Evidence Collection
+
+The STOP mechanism provides a structured way to interrupt runaway generation, preserving evidence for audit and recovery.
+
+**Stop Types:**
+| Type | Action |
+|------|--------|
+| `SUSPENSION` | Pause execution, preserve state |
+| `ROLLBACK` | Revert to last checkpoint |
+| `KILL` | Forcefully terminate process |
+
+**Trigger Reasons:**
+- `user_requested` – user‑initiated cancellation
+- `timeout` – operation exceeded timeout
+- `safety_violation` – blast radius or other safety rule violated
+- `out_of_memory` – memory pressure detected
+- `diff_queue_full` – approval queue capacity reached
+
+**Evidence Data Schema:**
+When a STOP is triggered, the system collects structured evidence:
+```json
+{
+  "stopCondition": "blast_radius_violation",
+  "triggeringComponent": "BlastRadiusService",
+  "triggeringAction": "diff_generation",
+  "evidence": {
+    "filePath": "src/Services/CustomerService.cs",
+    "violationType": "expansion_limit_exceeded",
+    "currentValue": 6,
+    "threshold": 5,
+    "context": "Diff would modify 6 files, exceeding 5‑file limit"
+  },
+  "timestamp": "ISO 8601 timestamp",
+  "executionId": "exec-uuid",
+  "planId": "plan-uuid"
+}
+```
+
+**Authority Flow:**
+1. Runtime detects STOP condition and gathers evidence.
+2. Runtime requests STOP via IPC to Host.
+3. Host validates evidence and persists STOP signal to the Execution State Store.
+4. Host executes suspension/rollback/kill as requested.
+5. Runtime enters a safe state (e.g., Plan Mode).
+
+**Evidence Archival:**
+- STOP evidence is stored in the Execution State Store and also written to `%TEMP%\\WinForge\\stop-evidence-<id>.json` for forensic analysis.
+- Evidence is retained for 90 days.
+
+**Integration:** The STOP mechanism is integrated with the Hardware IPC STOP Contract and the Rollback system.
+
 - **The Hardware IPC STOP Contract**: When a human operator clicks "Cancel/STOP", AstraBuild does not rely on graceful software flags (which a stuck AI loop might ignore). Instead, the C# Host instantly severs the physical Named Pipe connecting it to the Node.js Runtime, immediately blinding and paralyzing the AI process. The Host then physically kills the Runtime process tree, logs the exact `IPC_STOP` generation phase to the `AuditLog` for safety review, and restores the project to the pre-generation snapshot.
 - **Unbounded Environment Recovery**: Unlike code mutations, environmental loops (e.g., low disk space, missing SDKs, NuGet cache corruption) trigger continuous retries indefinitely while prompting the user for manual intervention. The system never gives up on environmental failures on its own.
 
@@ -2078,7 +2234,21 @@ Detects inconsistencies:
 
 #### Global Code Intelligence Integration
 
-Fetches real-time external dependency data including latest versions, security vulnerabilities (CVE), deprecation notices, and community adoption trends. Integrates with Dependency Guard for proactive vulnerability detection.
+
+**Web Research Agent:**  
+During mission execution, AstraBuild can optionally fetch external documentation and examples to augment its knowledge:
+
+- **Capabilities:**  
+  - Retrieves official documentation (Microsoft Learn, MDN, etc.) via API.
+  - Fetches code samples from GitHub (public repositories only) using the GitHub API.
+  - Searches Stack Overflow for solutions to common problems.
+
+- **Constraints:**  
+  - All external calls are **read‑only** and **cached** locally.
+  - No user‑specific data is ever sent to external services.
+  - The agent may use retrieved information to improve code generation but must never introduce behaviors not specified by the user.
+
+- **Offline Fallback:** If no network connection is available, the agent falls back to its internal knowledge and cached results.
 
 ### 8. Documentation & Knowledge Transfer
 
@@ -2252,6 +2422,25 @@ Each domain defines:
 
 This ensures system resilience under large-scale autonomous execution.
 
+#### Recovery Journal & Emergency Recovery
+
+To guarantee recoverability after crashes, AstraBuild maintains a `RecoveryJournal` in the Execution State Store.
+
+**RecoveryJournal Structure:**
+- Each atomic recovery step is recorded with status (`PENDING`, `COMPLETED`, `FAILED`).
+- On startup, the Host reads the journal and replays any incomplete steps in order.
+- Steps are idempotent; replaying a step that was partially applied does not cause corruption.
+
+**Emergency Recovery Mode:**
+- If a rollback operation fails after 9 attempts (4.5 minutes), the system enters Emergency Recovery Mode.
+- In this mode:
+  - All agent activity is halted.
+  - The user is presented with a clear, non‑technical notification: "A critical state inconsistency was detected. The system will attempt to repair automatically."
+  - The system performs a full file hash reconciliation (trusting the real VFS as authoritative) and rebuilds the PSG from the ground up.
+  - If recovery succeeds, execution resumes; if not, the user is guided to restore from a manual backup.
+
+**Recovery events are always logged to the Execution State Store and, if configured, to a local diagnostic file.**
+
 **System Identity Lock**
 
 Defines immutable core system constraints.
@@ -2284,23 +2473,9 @@ While internal governance is fully automated, AstraBuild exposes an abstracted v
 - Confidence scores and risk indicators for each action
 - Execution audit logs
 - Decision lock status (locked/unlocked)
-- **`/api/autonomous/mechanisms`**: A dedicated REST/RPC endpoint exposing the internal state, toggle status, and latency of all active embedded subsystems and reasoning engines. This endpoint is read‑only, requires authentication, and is only available in Developer Mode. It is used for diagnostic and audit purposes.
 
 This ensures the user understands *why* actions occur or are prevented, without exposing internal complexity.
 
-#### AI Decision Trace
-
-In Developer Mode, the Governance Transparency Layer exposes a structured, timestamped trace of every AI decision made during an active mission:
-
-- **Timestamp** — when the decision was made
-- **Agent** — which agent produced the proposal
-- **Decision Type** — code generation, architecture mutation, governance rejection, retry trigger, etc.
-- **Rationale** — the reasoning that produced the decision (human-readable)
-- **Context** — expandable structured data (PSG state, scores, constraints at time of decision)
-
-This trace is read-only, exportable, and immutable. It cannot be used to replay or mutate system state.
-
-Default mode: hidden. Developer Mode: visible as a timeline panel.
 
 ### Latent Planning & Multi-World Exploration Layer
 
@@ -2492,9 +2667,51 @@ There are no user role hierarchies, teams, or permission systems for humans.
 
 ### AI Provider Settings
 
-- Configurable AI model settings.
-- Multiple AI provider integration (OpenAI, Anthropic, etc.).
-- Custom behavior and output preferences.
+AstraBuild provides a built‑in UI for configuring cloud AI providers. Users can add, edit, and test providers directly from the application settings panel.
+
+**Each provider configuration includes:**
+- **Provider Name** – user‑defined label (e.g., "OpenRouter", "OpenAI", "Custom")
+- **Base URL** – the API endpoint (e.g., `https://api.openai.com/v1`)
+- **API Key** – stored securely (never in plaintext)
+- **Model Selection** – a list of available models (fetched automatically or entered manually)
+- **Capabilities** – the system auto‑detects or allows manual tagging of capabilities (chat, embeddings, vision, streaming)
+
+**Auto‑Validation:**
+- When a new provider is added, the system automatically sends a test request to validate the connection, API key, and model availability.
+- If validation fails, the user is shown a clear error message and guided to correct the configuration.
+- Validation results are displayed in the UI (e.g., green checkmark for success, red warning for failure).
+
+**Persistence:**
+- All settings are saved to a secure configuration file (`config.json`) and credentials are stored in the system's secure credential store (e.g., Windows Credential Manager).
+- The user can edit or delete providers at any time.
+
+**Provider Capabilities Matrix:**
+- The system maintains a capability map for each provider (e.g., supports streaming, embeddings, vision).
+- Fallback ordering and task routing use this capability data, never cost‑based logic.
+
+**No CLI‑Based Providers:** AstraBuild does not support command‑line AI providers; all providers must be cloud‑based with HTTP API endpoints.
+
+#### Provider Gateway & Fallback
+
+AstraBuild uses a provider factory pattern to manage multiple cloud AI providers with capability‑based routing and automatic fallback.
+
+**Provider Factory Pattern:**
+- All providers implement the `IAIProvider` interface with methods `generate()`, `embed()`, `stream()`.
+- The factory instantiates providers based on user configuration.
+- No provider‑specific branching is allowed outside adapter implementations.
+
+**Fallback Chain:**
+- Users define a fallback order in the UI (e.g., OpenRouter → OpenAI → Anthropic).
+- If the primary provider fails (timeout, rate limit, authentication), the system automatically attempts the next provider in the chain.
+- Fallback is **capability‑aware**: if the current task requires embeddings, the next provider must support embeddings.
+- Fallback events are logged to the Observability Pipeline for audit.
+
+**Offline Queue:**
+- When no provider is reachable, requests are queued to `%TEMP%\\WinForge\\offline-queue.json` (JSON Lines format).
+- The queue is persisted across restarts and replayed in priority order when connectivity is restored.
+- Queued requests expire after 24 hours.
+
+**Security:** All provider credentials are stored in the system's secure credential store (e.g., Windows Credential Manager) and never appear in plain text.
 
 ### Cross-Platform Support
 
@@ -2536,26 +2753,6 @@ Every successful build creates an immutable Snapshot via a hidden, local Git-bas
 - Clicking "Restore" instantly reverts the codebase, databases, and dependencies to that exact state.
 - Snapshots are lightweight and auto-pruned if disk space boundaries are reached.
 
-### Developer Mode & Progressive Disclosure
-
-AstraBuild operates in two presentation modes:
-
-**Simple Mode (Default):**
-Always visible: Prompt input, Mission progress indicator, Preview output, Export button, minimal status bar.
-Hidden by default: Mission graph, agent assignments, retry counters, build logs, governance detail.
-
-**Developer Mode (Toggle in Settings):**
-Reveals:
-- Build Monitor (real-time mission and task state visualization)
-- AI Decision Trace (full timeline of AI decisions, agents, and rationale)
-- Detailed status bar (active agents, mission count, retry counts)
-- Error codes with technical context in logs
-- Governance rejection detail
-
-Developer Mode is a toggle, not a separate app mode. All core functionality is identical; only the visibility layer changes.
-
-**Progressive Mastery Unlock:**
-After completing 3 or more projects, the system automatically unlocks the History tab and Project Diff view with a one-time contextual hint. Users earn capability access through usage, not by reading documentation.
 
 ### Error Translation Model
 
@@ -2576,7 +2773,7 @@ All internal system errors are translated into human-readable messages before su
 - Never show raw compiler output, stack traces, or error codes in Simple Mode.
 - Never use blame language ("failed", "crashed", "broken").
 - Always describe what the system is doing next.
-- Developer Mode may expose raw details in a collapsible log panel.
+
 
 ### First Launch Experience
 
