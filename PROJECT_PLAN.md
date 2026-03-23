@@ -346,7 +346,7 @@ No single-point enforcement exists.
 
 ### Global Execution Invariant
 
-*(Note: The legacy 12-Phase Intent-to-Deployment workflow is formally mapped as a strict subset of this uncompromising 11-step invariant. No legacy phase may operate outside these checkpoints.)*
+*(Note: The 12-Phase Intent-to-Deployment workflow is formally mapped as a strict subset of this uncompromising 11-step invariant. No phase may operate outside these checkpoints.)*
 Execution Order (STRICT — NO DEVIATION):
 
 1. Agent Proposal
@@ -902,7 +902,7 @@ This provides transparency without exposing internal planning complexity.
 **Backend Reality**: Dozens of internal orchestrator, mission, and task states.
 **User Experience**: 7 calm user-visible states.
 
-#### The 6 User-Visible States
+#### The 7 User-Visible States
 
 | UI State | Maps From (Internal) | User Sees |
 |---|---|---|
@@ -2947,6 +2947,8 @@ Excluded intentionally:
 - cost optimization systems
 - human approval workflows
 - multi-user coordination systems
+- Phased Development Roadmap
+- AI-powered CLI interface within the application
 
 These exclusions are deliberate to preserve full autonomy and architectural purity.
 
