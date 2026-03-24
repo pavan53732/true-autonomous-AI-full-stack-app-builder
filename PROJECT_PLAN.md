@@ -128,6 +128,35 @@ To guarantee absolute system security and prevent AI escape, AstraBuild physical
 - **The Runtime (The AI Brain)**: A Node.js/TypeScript background process that handles all LLM communication, AST parsing, and diff generation. It executes with structurally zero authority to write to the physical filesystem or mutate the internal Execution State Store (ESS) database.
 - **The Host (The Sandbox Warden)**: A C#/.NET 8 native desktop shell that acts as the absolute authority. It owns the SQLite ESS databases, Windows permissions, and the physical filesystem. It treats the Node.js Brain as an untrusted entity, enforcing mathematical validation on every JSON-RPC request before allowing the AI to influence the user's host machine.
 
+**Execution Binding Rule:**
+
+All Runtime requests MUST be transformed into tasks that flow through the Global Execution Invariant. Runtime cannot directly:
+
+- write to the filesystem
+- mutate the Execution State Store (ESS)
+- execute system commands
+- modify the Project State Graph (PSG)
+
+Instead, every Runtime‑initiated action follows:
+
+```
+Runtime Request
+→ Agent Proposal
+→ Governance Enforcement Interface (Pre‑Simulation)
+→ Change Simulation Layer
+→ Governance Enforcement Interface (Post‑Simulation)
+→ Task Graph Engine
+→ Autonomous Execution Engine
+→ Tool Execution Layer
+→ Verification Layer
+→ Governance Enforcement Interface (Pre‑Commit)
+→ PSG Mutation Gateway
+→ Project State Graph
+```
+
+This ensures that **no parallel authority path** exists outside the invariant. The Host remains the sole executor; the Runtime only proposes.
+
+
 ## System Capacity Constraints (Deterministic)
 
 ### Agent System
@@ -350,6 +379,9 @@ No single-point enforcement exists.
 ### Global Execution Invariant
 
 *(Note: The 12-Phase Intent-to-Deployment workflow is formally mapped as a strict subset of this uncompromising 11-step invariant. No phase may operate outside these checkpoints.)*
+
+**12‑Phase Intent‑to‑Deployment Workflow:**
+The 12 phases are: 1) Intent Capture, 2) Requirement Structuring, 3) Architecture Planning, 4) Task Decomposition, 5) Implementation, 6) Testing, 7) Review, 8) Build, 9) Verification, 10) Deployment, 11) Monitoring, 12) Iteration. These phases are mapped to the 11‑step invariant as a logical grouping; no phase bypasses the invariant steps.
 Execution Order (STRICT — NO DEVIATION):
 
 1. Agent Proposal
@@ -445,6 +477,9 @@ Architecture Intelligence does NOT enforce decisions.
 - Validate all agent-generated changes against architecture rules
 - Block violations and trigger re-planning
 - Monitor architecture drift post-mutation
+- Enforce decision locks and system constraints
+
+**Drift Detection Ownership:** The Architecture Governance System is the single authoritative owner of drift detection. The Architecture Validator agent (Section 7) and the Architecture Intelligence System (Section 5.5) act as sensors that provide data to the governance system; they do not independently initiate drift correction.
 - Enforce decision locks and system constraints
 
 #### Enforcement Points
@@ -571,11 +606,25 @@ All other steps (Governance checkpoints, Simulation, Verification) are defined b
 
 #### Failure Handling
 
-- **Retry Logic**: Configurable retry limits with exponential backoff
+- **Retry Logic**: All retries follow a deterministic fixed‑interval model:
+
+  ```
+  retry_interval_ms = 30000   (30 seconds)
+  max_retry_attempts = 9
+  total_retry_timeout_ms = retry_interval_ms * max_retry_attempts = 4.5 minutes
+  ```
+
+  Retries use **fixed‑interval backoff** (no jitter) to guarantee reproducibility. Exponential backoff is **not** used for task execution retries; all retry timings are deterministic and pre‑computed.
+
+- **Mission‑Level Retry Cap**: `retry_limit_per_mission = 3` is the maximum number of times a mission may be re‑planned or re‑attempted before being permanently aborted. This is independent of the per‑task retry attempts. If a mission is aborted due to exceeding this limit, the failure is logged and the mission is marked as `aborted`.
+
+- **Bug‑Classification Retry Budgets** (see Section 6) apply only to the autonomous debugging loop, not to task execution retries.
 - **Fallback Paths**: Alternative execution routes when primary path fails
 - **Rollback Triggers**: Automatic rollback on critical failures. Rollback operations are **idempotent**; repeated execution of the same rollback produces the same final state without side effects. If rollback fails, the system retries up to 9 times over a total of 4.5 minutes. Each retry is idempotent. If all retries fail, the system enters Emergency Recovery Mode (see Section 9).
 - **Recovery Missions**: Autonomous re-planning for failed missions
 - **Deadlock Detection**: Cyclic dependency detection and resolution
+
+**Deadlock Detection Ownership:** The Task Graph Engine is the sole authority for deadlock detection and resolution. The Execution Stability Controller and Autonomous Execution Engine do not implement independent deadlock detection; they rely on the Task Graph Engine.
 
 #### Execution Constraints
 
@@ -585,23 +634,7 @@ All other steps (Governance checkpoints, Simulation, Verification) are defined b
 - deadlock_resolution_strategy = abort_lowest_priority_task
 - retry_limit_per_mission = 3
 
-**Retry Limits (Canonical — by task type):**
 
-| task_type | retry_limit |
-|---|---|
-| code_generation | 10 |
-| build | 5 |
-| simulation | 3 |
-| verification | 3 |
-
-**Retry Limit Combination Rule:**
-When both a mission-level retry limit (`retry_limit_per_mission = 3`) and a task-type-specific retry limit exist, the effective retry limit for a task is:
-
-```
-effective_retry_limit = min(task_type_limit, mission_retry_limit)
-```
-
-Where `task_type_limit` is taken from the table above. This ensures deterministic and bounded retry behaviour.
 
 #### Integration Points
 
@@ -688,6 +721,7 @@ All mutation attempts outside this path are rejected.
 - Snapshot version is attached to every task execution
 - PSG writes from tasks within an active mission are **staged** and only committed after all tasks that depend on them complete, preventing intra-mission consistency violations
 - **Staged Write Isolation:** Tasks within the same mission **do not** see each other's staged writes. Each task operates on the original mission snapshot, independent of other tasks' intermediate writes. Staged writes become visible only after the mission commits and the new snapshot is published.
+- **Dependency‑Aware Snapshot Propagation**: If a task has an outgoing `DEPENDS_ON` edge to another task within the same mission, the first task may request that its staged writes be made visible to the dependent task. The system may create a **derived snapshot** (a new immutable view) that includes the changes, which is then used as the base snapshot for the dependent task. This preserves causality while maintaining isolation between non‑dependent tasks.
 - If a task's expected snapshot version conflicts with the current live PSG at commit time, it is **rejected and replanned**
 
 Guarantees:
@@ -790,6 +824,39 @@ Handles multi-phase, long-horizon development initiatives such as framework migr
 
 ---
 
+#### Long-Term Strategy Memory
+
+To enable coherent multi‑mission planning, AstraBuild maintains a persistent **Roadmap Memory Graph** that records strategic initiatives, their dependencies, and their outcomes over time.
+
+**Roadmap Memory Graph Structure:**
+- **Nodes:** Strategic initiatives (e.g., "Migrate to microservices"), milestones, architectural goals.
+- **Edges:** DEPENDS_ON, PRECEDES, AFFECTS, RESOLVES.
+
+**Key Features:**
+- **Multi‑Mission Strategic History:** Each strategic initiative is linked to the missions that contributed to it. The system can recall which missions were attempted, which succeeded, and which failed, enabling better future planning.
+- **Automated Roadmap Updates:** When a strategic planning mission completes, the Strategic Planning Engine updates the Roadmap Memory Graph with outcomes, dependencies, and lessons learned.
+- **Long‑Term Goal Tracking:** The Goal Completion & Convergence Engine uses the roadmap to assess whether overarching architectural goals are being achieved over weeks or months.
+
+**Storage and Access:**
+- The Roadmap Memory Graph is stored as part of the Cross-Project Knowledge Graph, allowing it to persist across sessions and projects.
+- Access is read‑only for agents during planning; updates occur via the same governance‑enforced path as all state mutations.
+
+**Integration:** The Strategic Planning Engine reads the roadmap before generating new strategic missions, ensuring that long‑term plans build on past experience.
+
+**Roadmap Memory Write Rule:**
+All updates to the Roadmap Memory Graph MUST follow the same governance‑enforced path as any other state mutation:
+
+```
+Agent Proposal
+→ Governance Enforcement Interface
+→ PSG Mutation Gateway
+→ Memory Layer Gateway
+→ Memory Layer
+```
+
+Roadmap updates are **not** direct writes; they are proposals that pass through the Governance Enforcement Interface and are committed by the Memory Layer Gateway.
+
+
 **Opportunity Detection Engine**
 Continuously scans the Project State Graph to identify potential improvements: missing test coverage, outdated dependencies, performance bottlenecks, security risks, incomplete features, and documentation gaps.
 
@@ -879,7 +946,7 @@ Balances innovation and stability:
 - Controls when to explore new architectural patterns
 - Prioritizes stable solutions in mature system areas
 - Allocates `exploration_budget = 4` alternative plans per mission for experimentation. This budget is enforced by the Parallel Plan Universe Generator (see Latent Planning & Multi-World Exploration Layer), which generates up to `exploration_budget` candidate plans per mission before pruning. This budget is a subset of `max_parallel_plan_branches = 16` (the total system-wide parallel planning limit).
-- **Parallel Plan Contention Resolution:** When multiple concurrent missions compete for the system-wide `max_parallel_plan_branches = 16` budget, the Parallel Plan Universe Generator applies a fair-share policy: each active mission receives `floor(16 / active_mission_count)` branches. If a mission's `exploration_budget` exceeds its fair-share allocation, excess plan generation is queued until branches free up. No mission may starve others of all planning capacity.
+- **Parallel Plan Contention Resolution:** When multiple concurrent missions compete for the system-wide `max_parallel_plan_branches = 16` budget, the Parallel Plan Universe Generator applies a fair-share policy: each active mission receives `floor(16 / active_mission_count)` branches. If `active_mission_count = 0` (no active missions), the full budget is available to the next mission that starts. If a mission's `exploration_budget` exceeds its fair-share allocation, excess plan generation is queued until branches free up. No mission may starve others of all planning capacity.
 - Prevents excessive architectural churn
 
 Ensures long-term system stability while enabling controlled innovation.
@@ -951,6 +1018,24 @@ This provides transparency without exposing internal planning complexity.
 
 > **No FATAL state exists in the UI.** The presentation layer has no failed/crashed visual state. The system retries until it succeeds or the user explicitly cancels. This is a design invariant, not an implementation detail.
 
+#### UI Authority Constraint
+
+UI state transitions are **read‑only projections** of the underlying system state. The UI MUST NOT:
+
+- trigger retries directly
+- modify mission state
+- change execution flow
+- bypass governance
+
+All retries, recovery actions, and execution control are exclusively managed by:
+
+- Autonomous Execution Engine
+- Agent Failure Supervisor
+- Governance Enforcement Interface
+
+The UI displays status and accepts user intent (via Interaction Layer), but **never initiates or influences execution** outside the defined intent‑to‑proposal flow.
+
+
 ---
 
 
@@ -1001,6 +1086,23 @@ These modules are native to AstraBuild and have been designed to obey the system
 | Multi‑Language Parser | Parse multiple languages | Code Intelligence & Optimization Layer (Section 5) – AST Parser | Already covered |
 | Agent Execution Sandbox | Isolate agent execution | Tool Execution Layer (Section 4) – Sandboxing | Already covered |
 | Code Quality Intelligence | Enforce code quality | Code Quality Intelligence System (Section 5.4) | Already covered |
+
+#### Module Execution Contract
+
+Every autonomous module (including the 27 core modules and 18 reasoning engines) MUST conform to the following execution contract:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `module_id` | string | Unique identifier (UUID) |
+| `task_type` | enum | One of: `build`, `simulation`, `code_generation`, `verification` |
+| `input_schema` | JSON Schema | Strict definition of required inputs |
+| `output_schema` | JSON Schema | Strict definition of expected outputs |
+| `required_validators` | array | List of governance validators that must pass before execution (e.g., `architecture_validator`, `tool_permission_validator`) |
+| `execution_stage` | enum | Where in the Global Execution Invariant the module is invoked (e.g., `planning`, `execution`, `verification`) |
+
+**Enforcement:**
+Modules execute **only** via the Task Graph Engine. They cannot self‑invoke or bypass governance. The Tool Authority Gateway validates that every module call complies with its declared contract before allowing execution.
+
 
 
 #### Pre‑Message Context Scan
@@ -1235,6 +1337,15 @@ Any event-triggered planning must:
   - **Agent Swarm Coordination**: Protocols for orchestrating hundreds of micro-agents for high-concurrency atomic edits across massive directory structures.
   - **Agent Failover & Recovery**: Automated health-check triggers that spawn replica agents upon detection of primary role hangs or crashes.
   - **Capability Benchmark Engine**: Evaluates agent performance through standardized coding tasks, reasoning accuracy tests, and skill scoring. Provides objective metrics for the Agent Evolution Engine to identify improvement opportunities.
+- **Capability Self‑Discovery Loop:**  
+  The system continuously analyses agent performance data to identify gaps and opportunities for new specialised roles.  
+  - **Capability Clustering:** Using the Capability Benchmark Engine, the system clusters agent performance metrics (success rates, latency, quality) to discover natural groupings of capabilities.  
+  - **Automatic New Role Creation:** When a cluster of capabilities is found that is not currently represented by an existing logical role, the Agent Evolution Engine may propose the creation of a new role. This proposal follows the same governance path (Agent Proposal → Governance → PSG Mutation Gateway) to add the role definition to the PSG.  
+  - **Skill Library Expansion:** Newly created roles are added to the Agent Skill Library, and their initial skill modules are derived from the aggregated patterns of existing agents that exhibited the capabilities.  
+  - **Human Oversight:** Role creation proposals are logged and can be reviewed; by default they are auto‑approved unless governance policies require manual intervention.  
+
+  This loop ensures that the agent ecosystem evolves organically to match the complexity of the projects it builds.
+
 
 - **Agent Safety Boundaries**:
   - **Tool Permissions**: Granular access control for each agent role (e.g., Frontend agents cannot access database-write tools).
@@ -1395,16 +1506,14 @@ Note:
 Worker Manager does NOT execute tasks directly.
 All execution occurs inside worker processes managed by the Execution Runtime Control Plane.
   - **Execution Stability Controller (coordination layer only)**:
-    - Prevents deadlocks
+    - **Deadlock Monitoring**: Reports suspicious task graph states to the Task Graph Engine; does not initiate resolution
     - Monitors execution health signals
     - Delegates recovery to Agent Failure Supervisor
     - Does NOT manage workers directly
 
 #### Deadlock Resolution Strategy
 
-- Detect cyclic task dependencies
-- Abort lowest-priority task
-- Replan affected mission
+Deadlock detection and resolution are handled by the Task Graph Engine. This section merely describes the strategy used: detect cyclic dependencies, abort lowest‑priority task, replan affected mission.
 
 ---
 
@@ -1466,11 +1575,13 @@ Scheduling MAY:
 This ensures stable operation when large numbers of agents run simultaneously.
 
 - **Internal Mechanisms**:
-  - **Parallelism Engine (Single Active Transaction)**: While AI planning and code generation can occur concurrently across massive worker pools, all filesystem mutation and toolchain invocation is strictly serialized. The Orchestrator processes exactly one `ConstructionTransaction` at a time to mathematically eliminate race conditions and corrupted builds.
+  - **Parallelism Engine (Single Active Transaction)**: While AI planning and code generation can occur concurrently across massive worker pools, all filesystem mutation and toolchain invocation is strictly serialized. The Orchestrator processes exactly one `ConstructionTransaction` at a time to mathematically eliminate race conditions and corrupted builds. This serialization means that while 128 workers may be generating code, planning, or analysing simultaneously, all filesystem writes are queued and processed one at a time. This ensures mathematical determinism and prevents corruption, at the cost of throughput on write‑heavy missions.
   - **Resource-Aware Adaptive Compilation**: Before initiating heavily parallelized worker pools or memory-intensive compilation tasks (e.g., Webpack, Gradle), the Execution Engine telemeters host OS hardware state. If available RAM or disk space is fatally low, AstraBuild automatically throttles parallel execution to a single core and disables memory-intensive caching, trading speed for structural stability to avert host OS crashes.
   - **Context Isolation**: Precision-context provisioning for workers to maximize speed and minimize hallucination.
   - **Incremental Execution Mode**: Supports fine-grained execution cycles for micro-missions without triggering full task graph recomputation.
-  - **Failure Handling & API Degradation Pauses (The Exponential Fault Contract)**: Staging of retries and automated debugging hand-off for crashed tasks. Because AstraBuild relies on user-configured external AI providers (OpenRouter, OpenAI), it implements a strict fault-tolerance bridge. On receiving a `429 Too Many Requests` or `5xx` error, the local AI Mini Service executes a silent exponential backoff loop (`2s → 4s → 8s → 16s → 30s max`). If the connection fails 10 consecutive times, the Orchestrator transitions to a Fail-Closed `AI_SERVICE_UNAVAILABLE` state, freezing the sandbox to prevent hallucinated fallback code until the user's cloud provider recovers.
+  **Note:** This exponential backoff applies **only** to external API provider failures (network timeouts, rate limits). It is distinct from the fixed‑interval retry model used for internal task execution (see Section 1.5).
+
+- **Failure Handling & API Degradation Pauses (The Exponential Fault Contract)**: Staging of retries and automated debugging hand-off for crashed tasks. Because AstraBuild relies on user-configured external AI providers (OpenRouter, OpenAI), it implements a strict fault-tolerance bridge. On receiving a `429 Too Many Requests` or `5xx` error, the local AI Mini Service executes a silent exponential backoff loop (`2s → 4s → 8s → 16s → 30s max`). If the connection fails 10 consecutive times, the Orchestrator transitions to a Fail-Closed `AI_SERVICE_UNAVAILABLE` state, freezing the sandbox to prevent hallucinated fallback code until the user's cloud provider recovers.
 
 #### Deterministic Build Pipeline & Toolchain Isolation
 
@@ -1563,7 +1674,7 @@ A change is considered non-trivial if it meets ANY of the following criteria:
 - Crosses a service or module boundary
 - Has a `risk_level ≥ 1` as determined by the Structural Validator
 
-Single-line cosmetic fixes (formatting, comments) within one file are trivial. **However, to strictly adhere to the Global Execution Invariant, they DO NOT bypass simulation.** Instead, the Simulation Layer processes them as an `O(1)` zero-cost pass-through, instantly returning `risk_level = 0` without initializing the heavy virtual runtime, ensuring the linear execution geometry is never broken.
+Single-line cosmetic fixes (formatting, comments) within one file are classified as trivial **by the simulation layer itself**. The simulation layer still executes as step 3 of the Global Execution Invariant, but it performs a lightweight analysis that immediately returns `risk_level = 0` without initializing the heavy virtual runtime. No step is skipped; the linear execution geometry is preserved.
 
 Key capabilities:
 - Static code analysis of proposed changes
@@ -1729,7 +1840,7 @@ This library is continuously updated through the Meta-Learning Engine and Cross-
 - Perform architecture risk, complexity, and maintainability scoring
 - Simulate architecture behavior under load, failure, and scaling conditions
 - Analyze impact before architectural mutations
-- **Track architecture drift and evolution over time** (single authoritative owner)
+- **Provide drift analysis data to the Architecture Governance System** (single authoritative owner for drift detection)
 - Generate architecture migration and refactoring plans
 - Maintain architecture knowledge graph and pattern library
 
@@ -2148,7 +2259,7 @@ New memory entries are created only after successful mission completion via a co
 2. Autonomous Feedback Loop generates a structured memory record (outcome, pattern, agent, mission_id)
 3. A dedicated **Memory Recorder Agent** submits the memory record as an Agent Proposal
 
-   > **Memory Recorder Agent:** This is a **special-purpose ephemeral agent** spawned on-demand by the Meta-Learning Engine after mission completion. It is NOT one of the 34 logical agent roles — it is a short-lived functional sub-agent with no persistent existence. It follows the full Agent Proposal → Governance path but is not assigned to any cluster.
+   > **Memory Recorder Agent:** This is a **special-purpose ephemeral agent** spawned on-demand by the Meta-Learning Engine after mission completion. It is NOT one of the 34 logical agent roles — it is a short-lived functional sub-agent with no persistent existence. It follows the full Agent Proposal → Governance path but is not assigned to any cluster. The Memory Recorder Agent is granted a special **read‑only** tool permission set and a default `AllowedFilePatterns` of `[]` (no files). It is authorised to submit Agent Proposals via the Governance Enforcement Interface; its proposals are always subject to the same validation as any other agent.
 4. Proposal passes Governance Enforcement Interface
 5. **Memory Layer Gateway** writes the entry to the Memory Layer
 
@@ -2189,6 +2300,25 @@ IF trust_score = 1 → memory is allowed as context input
 - Memory is non-authoritative
 - Must be validated against PSG before use
 - Stale memory is ignored or downgraded
+
+#### Cognitive Memory Hierarchy
+
+AstraBuild maintains a layered memory architecture that mimics human cognitive systems, enabling more sophisticated reasoning and learning.
+
+| Memory Type | Scope | Persistence | Purpose |
+|-------------|-------|-------------|---------|
+| **Short-Term Reasoning Memory** | Active mission, current task | Ephemeral (mission scope) | Stores reasoning steps, intermediate conclusions, and decision context for the current task. Used by the Formal Reasoning Loop and Self-Critique Engine. |
+| **Episodic Execution Memory** | Mission execution history | Persistent (project scope) | Records sequences of actions, their outcomes, and the context in which they were taken. Enables replay, debugging, and learning from past successes/failures. Stored in the Execution Graph and referenced by the Meta-Learning Engine. |
+| **Semantic Architecture Memory** | Global project knowledge | Persistent (project scope) | Stores abstract architectural patterns, component relationships, and design decisions. This is the authoritative content of the Project State Graph (PSG). |
+| **Procedural Skill Memory** | Agent capabilities | Persistent (cross-project) | Encodes reusable skills, patterns, and agent behaviours learned across projects. Stored in the Agent Skill Library and Cross-Project Knowledge Graph. |
+
+**Lifecycle and Interaction:**
+- Short‑term memory is cleared at mission end or system reset.
+- Episodic memory is pruned according to retention policy (configurable, default 90 days).
+- Semantic memory evolves through PSG mutations.
+- Procedural memory is updated by the Agent Evolution Engine after successful mission completions.
+
+These tiers are managed by the Memory Layer Gateway, with read access via the Memory Injector and write access only through the Agent Proposal → Governance → Memory Layer Gateway path.
 
 #### Cross-Project Knowledge Graph
 
@@ -2411,6 +2541,9 @@ ELSE
 
 Only approved actions proceed to execution.
 
+**Micro‑Mission Governance Exception:**
+For micro‑missions (as defined in Section 1.6), the set of required validators may be reduced. A micro‑mission must declare which validators it requests, and the Governance Enforcement Interface applies only those validators. However, the following validators are **always** required for any micro‑mission: `scope_validator`, `hallucination_validator`, and `cost_validator`. `architecture_validator` and `tool_permission_validator` may be skipped only if the micro‑mission explicitly states that it does not modify architecture or tool calls.
+
 **Failure Domain Isolation System**
 
 #### Failure Propagation Model
@@ -2615,7 +2748,7 @@ Examples:
 - **Test Generator**: Produces unit, integration, and end-to-end test suites.
 - **Security Auditor**: Conducts SAST/DAST and vulnerability scanning.
 - **Performance Analyzer**: Detects inefficiencies and bottlenecks in the code.
-- **Architecture Validator**: Confirms output matches the original design blueprint and monitors for architecture drift from PSG invariants (leverages Architecture Intelligence System for validation logic).
+- **Architecture Validator**: Confirms output matches the original design blueprint and reports potential drift to the Architecture Governance System (leverages Architecture Intelligence System for validation logic).
 
 ### 5. Repair & Debug Cluster (5 Agents)
 
@@ -2991,7 +3124,7 @@ graph TD
 
     %% Memory Layer is written via its own Memory Layer Gateway (not PSG Mutation Gateway)
     MemGateway[Memory Layer Gateway] --> Memory[Memory Layer]
-    Gov1 --> MemGateway
+    Verification --> MemGateway
 
     %% Feedback loops
     PSG --> Planning
