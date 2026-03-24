@@ -480,7 +480,6 @@ Architecture Intelligence does NOT enforce decisions.
 - Enforce decision locks and system constraints
 
 **Drift Detection Ownership:** The Architecture Governance System is the single authoritative owner of drift detection. The Architecture Validator agent (Section 7) and the Architecture Intelligence System (Section 5.5) act as sensors that provide data to the governance system; they do not independently initiate drift correction.
-- Enforce decision locks and system constraints
 
 #### Enforcement Points
 
