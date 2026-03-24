@@ -322,6 +322,9 @@ User-provided intent
 → Project State Graph
 → [Continuous Loop: PSG feeds Opportunity Detection Engine → Planning Loop continues autonomously]
 
+
+**Flow Alignment Note:**
+The `Hierarchy of control` flow above includes the **Interaction Layer** and **Planning** steps that occur **before** the `Global Execution Invariant` step 1 (Agent Proposal). The invariant begins at Agent Proposal and is strictly linear. This is consistent with the `Latent Planning Placement` note already present.
 ### Simulation Enforcement Rule (Strict)
 
 Simulation is a non-executing analytical phase.
@@ -591,6 +594,15 @@ All other steps (Governance checkpoints, Simulation, Verification) are defined b
 | simulation | 3 |
 | verification | 3 |
 
+**Retry Limit Combination Rule:**
+When both a mission-level retry limit (`retry_limit_per_mission = 3`) and a task-type-specific retry limit exist, the effective retry limit for a task is:
+
+```
+effective_retry_limit = min(task_type_limit, mission_retry_limit)
+```
+
+Where `task_type_limit` is taken from the table above. This ensures deterministic and bounded retry behaviour.
+
 #### Integration Points
 
 - **PSG Mutation Gateway**: Final commit point for all task results
@@ -675,6 +687,7 @@ All mutation attempts outside this path are rejected.
 - Each mission's PSG snapshot is **fixed at mission start** and remains immutable for all tasks within that mission
 - Snapshot version is attached to every task execution
 - PSG writes from tasks within an active mission are **staged** and only committed after all tasks that depend on them complete, preventing intra-mission consistency violations
+- **Staged Write Isolation:** Tasks within the same mission **do not** see each other's staged writes. Each task operates on the original mission snapshot, independent of other tasks' intermediate writes. Staged writes become visible only after the mission commits and the new snapshot is published.
 - If a task's expected snapshot version conflicts with the current live PSG at commit time, it is **rejected and replanned**
 
 Guarantees:
@@ -822,7 +835,13 @@ Runs systematic A/B tests on architecture variants, algorithm choices, and imple
 **Mission Scheduler**
 Maintains the global mission queue and schedules missions for execution through the Task Graph Engine. Receives missions from the Mission Generator and ensures conflict prevention and dependency management during execution.
 
-**Mission-to-Task Priority Link:** The Mission Scheduler assigns `mission_priority_score` to each mission. The Task Graph Engine uses this score to influence `task_priority_score` for tasks within that mission. Specifically, tasks belonging to higher-priority missions receive a base priority boost applied before the task-level formula. Task scheduling authority remains exclusively with the Task Graph Engine and Global Task Queue.
+**Mission-to-Task Priority Link:** The Mission Scheduler assigns `mission_priority_score` to each mission. The Task Graph Engine uses this score to influence `task_priority_score` for tasks within that mission. Specifically, tasks belonging to higher-priority missions receive a base priority boost applied before the task-level formula. The effective priority used for scheduling is:
+
+```
+effective_task_priority = task_priority_score + floor(mission_priority_score / 2)
+```
+
+Where `mission_priority_score ∈ {0..7}` and `floor(mission_priority_score / 2)` yields a boost of 0–3. This ensures deterministic, predictable priority ordering. Task scheduling authority remains exclusively with the Task Graph Engine and Global Task Queue.
 
 ---
 
