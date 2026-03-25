@@ -4159,6 +4159,7 @@ Excluded intentionally:
 - **Local LLM Inference (Ollama, LM Studio)**
 - **CLI-Based AI Provider Integration**
 - **Air-Gapped / Internet-Free Operation (Cloud AI Requirement)**
+- **Global Runtime Dependency (Shared .NET 8 SDKs/Runtimes)**
 
 These exclusions are deliberate to preserve full autonomy and architectural purity.
 
