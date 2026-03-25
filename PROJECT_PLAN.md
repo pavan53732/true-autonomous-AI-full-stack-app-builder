@@ -59,6 +59,13 @@ REMOTE_GIT_ALLOWED = FALSE
 AUTO_COMMIT_ENABLED = TRUE
 GIT_REQUIRED = TRUE
 
+**GIT_INIT_RULE:**
+
+IF repository_missing
+THEN
+  git init
+  create initial commit
+
 Every project MUST:
 
 - initialize local git repository
@@ -293,8 +300,11 @@ PIPELINE = [
 
 **LOCAL_EXPORT step:**
 
+LOCAL_EXPORT must pass:
+→ Governance Enforcement Interface
+before execution
+
 - build application
-- commit final build state
 - tag commit as export_commit
 - export to filesystem
 - record export_path
@@ -724,7 +734,9 @@ task_type_max_ticks = lookup(task_type) {
 
 IF task_execution_time_ticks > task_type_max_ticks
 THEN
-  terminate_task = TRUE
+  emit timeout_warning
+  mark_status = slow_execution
+  continue_execution
   mark_status = timeout_failure
   emit timeout_event
 
@@ -818,10 +830,10 @@ All file mutations MUST follow:
 
 AGENT_PROPOSAL
 → GOVERNANCE
-→ TOOL_EXECUTION
-→ WORKING_TREE_UPDATE
-→ GIT_ADD
-→ GIT_COMMIT
+→ TOOL_EXECUTION (HOST AUTHORITY)
+→ WORKING_TREE_UPDATE (HOST)
+→ GIT_ADD (HOST)
+→ GIT_COMMIT (HOST)
 → PSG_UPDATE
 
 - **Project State Graph (PSG)** is the single source of truth
@@ -987,8 +999,10 @@ Execution Order (STRICT — NO DEVIATION):
 7. Tool Execution Layer
 8. Verification Layer
 9. Governance Enforcement Interface (Pre-Commit)
-10. PSG Mutation Gateway
-11. Project State Graph
+10. GIT_COMMIT
+11. PSG Mutation Gateway
+12. LOCAL_EXPORT
+13. Project State Graph
 
 Rules:
 
