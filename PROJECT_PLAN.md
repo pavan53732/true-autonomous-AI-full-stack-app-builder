@@ -11,6 +11,46 @@ DOCUMENT_MODE = EXECUTION_SPEC
 INTERPRETATION_MODE = STRICT
 AMBIGUITY_TOLERANCE = 0
 PRIMARY_OUTPUT = WORKING_DESKTOP_APPLICATION
+
+## LOCAL EXPORT DEPLOYMENT CONTRACT (ABSOLUTE)
+
+DEPLOYMENT_MODE = LOCAL_ONLY
+DEPLOYMENT_TARGET = USER_WINDOWS_FILESYSTEM
+CLOUD_DEPLOYMENT_ALLOWED = FALSE
+REMOTE_HOSTING_ALLOWED = FALSE
+AUTO_PUBLISH_ALLOWED = FALSE
+
+EXPORT_REQUIREMENT = MANDATORY
+
+Every successful build MUST produce:
+
+- runnable application output
+- local filesystem export
+- user-accessible folder
+- no remote deployment
+
+EXPORT_PATH_POLICY:
+
+default_export_root = %USERPROFILE%\Documents\AstraBuild\Exports\
+project_export_structure:
+
+<project_name>\
+  ├── build\
+  ├── runtime\
+  ├── assets\
+  ├── config\
+  └── run.bat
+
+Export must be:
+
+- writable by user
+- executable locally
+- independent of AstraBuild runtime
+- offline runnable
+
+Failure to export locally:
+
+→ BUILD_STATUS = FAILURE
 ```
 
 **Hard Rule:**
@@ -22,6 +62,16 @@ Any agent reading this document MUST:
 ---
 
 ### 1. PRIMARY OUTPUT CONTRACT (ABSOLUTE AUTHORITY)
+
+**Canonical Terminology & Definitions:**
+
+```md
+TERM_DEPLOYMENT = LOCAL_EXPORT_ONLY
+TERM_PUBLISH = FORBIDDEN
+TERM_HOSTING = FORBIDDEN
+```
+
+**Deployment = Local export to Windows filesystem**
 
 ```md
 OUTPUT_TYPE = DESKTOP_APPLICATION
@@ -181,8 +231,16 @@ PIPELINE = [
   VERIFICATION,
   PRE_COMMIT_GOVERNANCE,
   PSG_MUTATION,
+  LOCAL_EXPORT,
   PSG_UPDATE
 ]
+
+**LOCAL_EXPORT step:**
+
+- packages built application
+- writes to user local filesystem
+- verifies launchability
+- records export path
 ```
 
 #### 7.1 Enforcement Rule
@@ -359,6 +417,12 @@ To ensure agents think in product terms rather than just system terms, the exact
 
 AstraBuild is an installable desktop application that houses this continuous improvement loop.
 
+5. Export Manager Panel:
+   - Shows export path
+   - Allows open folder
+   - Allows re-export
+   - Displays export status
+
 ## System Boundary: Single-User Autonomous Architecture
 
 AstraBuild is a **strictly single-user autonomous system**.
@@ -371,6 +435,28 @@ AstraBuild is a **strictly single-user autonomous system**.
 All coordination, permissions, and execution control exist **only at the AI agent level**, enforced through governance systems (Decision Locks, Tool Authority, Scope Boundaries).
 
 This is NOT a collaborative SaaS platform. It is a **single-operator autonomous software factory**.
+
+## Explicitly Excluded Capabilities (Deployment)
+
+The following are intentionally NOT supported:
+
+- Cloud deployment
+- Remote hosting
+- Automatic web publishing
+- CI/CD pipeline deployment
+- GitHub Pages deployment
+- Netlify deployment
+- Vercel deployment
+- AWS deployment
+- Azure deployment
+- Google Cloud deployment
+- Docker registry push
+- Kubernetes deployment
+- Remote SSH deployment
+
+All deployment is strictly:
+
+LOCAL WINDOWS EXPORT ONLY
 
 ## Autonomous System Control Plane
 
@@ -775,7 +861,21 @@ The 12 steps are:
 7) Review
 8) Build
 9) Verification
-10) Deployment
+10) Local Export Deployment
+
+Deployment in AstraBuild means:
+
+- exporting runnable application
+- writing to local Windows filesystem
+- validating executable launch
+- no remote hosting
+
+Deployment NEVER means:
+
+- cloud publish
+- hosting
+- server deployment
+- CI/CD push
 11) Monitoring
 12) Iteration
 
@@ -1045,6 +1145,15 @@ idempotent = TRUE
 - **Deadlock Detection**: Cyclic dependency detection and resolution. When a deadlock is detected, the system aborts the task with the lowest **effective priority score** (as defined in the Mission-to-Task Priority Link). Aborted tasks are not automatically retried; they are marked as failed and trigger re-planning of the affected mission. The Execution Stability Controller reports the deadlock to the Task Graph Engine, which owns resolution.
 
 **Deadlock Detection Ownership:** The Task Graph Engine is the sole authority for deadlock detection and resolution. The Execution Stability Controller and Autonomous Execution Engine do not implement independent deadlock detection; they rely on the Task Graph Engine.
+
+- export_path_resolution = deterministic
+
+export_path = 
+default_export_root + 
+project_name + 
+build_version
+
+Export path must be reproducible across replay.
 
 #### Execution Constraints
 
@@ -1959,6 +2068,21 @@ This enforces strict separation:
 - Intelligence produces decisions  
 - Execution Engine produces reality
 
+**Deployment Tool Restrictions:**
+
+Tools MUST NOT:
+
+- upload build artifacts
+- push to remote repository
+- deploy to cloud provider
+- call hosting APIs
+
+Tools MAY ONLY:
+
+- write to local filesystem
+- package executable
+- generate local runtime
+
 
 #### Model Orchestration Layer
 
@@ -2807,6 +2931,16 @@ Memory writes are validated only at the Pre‑Simulation governance checkpoint. 
 
 No direct memory writes are permitted outside this path.
 
+**Exported applications are NOT stored in Memory Layer.**
+
+Memory stores:
+- patterns
+- decisions
+- learning
+
+Build outputs are ONLY:
+- local filesystem artifacts
+
 **Memory Trust Model**
 
 Memory entries in AstraBuild are non-authoritative. They are treated as probabilistic inputs to agent reasoning, not as ground truth. Each memory entry carries a `trust_score` that determines whether it may be injected into agent context. Trust is earned through repeated PSG validation and lost through staleness or invalidation.
@@ -2908,6 +3042,14 @@ Ranks:
 - external knowledge
 
 Lower-ranked sources cannot override higher-ranked ones
+
+**Deployment Governance Rule:**
+
+IF deployment_target != local_filesystem 
+THEN reject_execution
+
+IF remote_endpoint_detected = TRUE 
+THEN reject_execution
 
 #### Confidence Calibration Model
 
