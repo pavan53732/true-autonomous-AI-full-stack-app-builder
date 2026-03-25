@@ -1896,7 +1896,7 @@ This layer is strictly responsible for process-level execution infrastructure.
 
 This layer exists purely to support execution, not to control it.
 
-The Autonomous Execution Engine is the ONLY component allowed to perform real-world execution.
+The Autonomous Execution Engine is the ONLY component allowed to perform project-level real-world execution (file mutations, compiler invocations, network requests). The C# Host retains exclusive OS-level execution authority (e.g., hard process termination via the IPC STOP Contract).
 
 Rules:
 
