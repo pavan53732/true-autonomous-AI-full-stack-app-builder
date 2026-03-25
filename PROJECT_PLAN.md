@@ -3843,6 +3843,9 @@ Excluded intentionally:
 - Stage-Based Development Roadmap
 - AI-powered CLI interface within the application
 - Developer Mode
+- **Local LLM Inference (Ollama, LM Studio)**
+- **CLI-Based AI Provider Integration**
+- **Air-Gapped / Internet-Free Operation (Cloud AI Requirement)**
 
 These exclusions are deliberate to preserve full autonomy and architectural purity.
 
