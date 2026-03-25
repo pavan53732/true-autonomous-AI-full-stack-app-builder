@@ -10,12 +10,13 @@
 DOCUMENT_MODE = EXECUTION_SPEC
 INTERPRETATION_MODE = STRICT
 AMBIGUITY_TOLERANCE = 0
-PRIMARY_OUTPUT = WORKING_DESKTOP_APPLICATION
+ASTRABUILD_RUNTIME = WINDOWS_DESKTOP_APPLICATION
+PRIMARY_OUTPUT_CAPABILITY = {WINDOWS_DESKTOP, WEB_APPLICATION, ANDROID_MOBILE}
 
 ## LOCAL EXPORT DEPLOYMENT CONTRACT (ABSOLUTE)
 
 DEPLOYMENT_MODE = LOCAL_ONLY
-DEPLOYMENT_TARGET = USER_WINDOWS_FILESYSTEM
+DEPLOYMENT_TARGET = LOCAL_WINDOWS_FILESYSTEM (ANY_OUTPUT_TYPE)
 CLOUD_DEPLOYMENT_ALLOWED = FALSE
 REMOTE_HOSTING_ALLOWED = FALSE
 AUTO_PUBLISH_ALLOWED = FALSE
@@ -771,7 +772,13 @@ Determinism Constraint:
 
 ### Platform Abstraction & Target System Layer
 
-AstraBuild is natively multi-platform. All planning, architecture, and execution are performed against an abstract platform model before being materialized into specific targets.
+AstraBuild is natively multi-platform, as defined in the **MANDATORY HEADER (Section 0)**. All planning, architecture, and execution are performed against an abstract platform model before being materialized into specific targets. AstraBuild itself runs as a **Windows Desktop Application** but possesses the architectural authority to author, compile, and export for the following targets:
+
+- **Web Applications**: Single Page Applications (SPA), Progressive Web Apps (PWA), and static sites.
+- **Windows Native Applications**: Desktop apps (.NET, C++, or Node-based).
+- **Mobile Applications (Android only)**: Native or hybrid Android exports.
+
+**Target Lock Invariant**: Regardless of the output platform (Web, Windows, Android), the final build **MUST** be exported to the **Local Windows Filesystem** as specified in the **LOCAL EXPORT DEPLOYMENT CONTRACT**.
 
 #### Platform Abstraction Model
 
