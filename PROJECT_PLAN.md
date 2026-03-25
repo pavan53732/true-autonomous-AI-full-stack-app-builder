@@ -535,14 +535,17 @@ This ensures that **no parallel authority path** exists outside the invariant. T
 ### Execution Constraints
 
 - max_worker_processes = 128
-task_execution_time_ms is defined per task_type:
+time_unit = logical_tick
+tick_duration_ms = constant (not used in logic)
 
-build_task_max_time_ms = 600000
-simulation_task_max_time_ms = 20000
-code_generation_task_max_time_ms = 120000
-verification_task_max_time_ms = 10000
+task_execution_time_ticks is defined per task_type:
 
-min_task_execution_time_ms = 0
+build_task_max_ticks = 600000
+simulation_task_max_ticks = 20000
+code_generation_task_max_ticks = 120000
+verification_task_max_ticks = 10000
+
+min_task_execution_time_ticks = 0
 
 Constraint:
 
@@ -552,14 +555,14 @@ Execution rule:
 
 task_execution_time_source = deterministic_monotonic_clock
 
-task_type_max_time_ms = lookup(task_type) {
-  build → build_task_max_time_ms
-  simulation → simulation_task_max_time_ms
-  code_generation → code_generation_task_max_time_ms
-  verification → verification_task_max_time_ms
+task_type_max_ticks = lookup(task_type) {
+  build → build_task_max_ticks
+  simulation → simulation_task_max_ticks
+  code_generation → code_generation_task_max_ticks
+  verification → verification_task_max_ticks
 }
 
-IF task_execution_time_ms > task_type_max_time_ms
+IF task_execution_time_ticks > task_type_max_ticks
 THEN
   terminate_task = TRUE
   mark_status = timeout_failure
@@ -1686,7 +1689,11 @@ AstraBuild allows users to optionally bias the AI's reasoning by selecting a per
 | **Debugging** | Error resolution, troubleshooting | Low (4) |
 
 **Conflict Resolution:**  
-If multiple personas conflict, the highest‑priority persona takes precedence. If no user decision is made within 5 minutes, the system automatically selects the highest‑priority persona and logs the timeout event.
+If multiple personas conflict, the highest‑priority persona takes precedence.
+
+IF persona_selection_dialog_active = TRUE
+AND timeout = 5 minutes
+THEN system automatically selects highest-priority persona
 
 **Implementation:** Personas are injected as part of the system prompt and influence the reasoning chain but do not bypass any governance steps.
 
@@ -2117,7 +2124,7 @@ Advanced reasoning over the entire codebase to ensure safe growth:
 **CORE PRINCIPLE: No Unstructured Code Manipulation.** AstraBuild utilizes a strictly verifiable, AST-governed engine instead of free-form LLM generation. To ensure mathematically safe edits across 1000+ file projects, the AI Coding Engine enforces 5 absolute invariants:
 
 1. **The Code Intelligence Invariant (AST Mutation Mandate)**: The AI is **STRICTLY FORBIDDEN** from using Regex or raw "String Search/Replace" to mutate source code. All agent patch intents MUST be routed through an Abstract Syntax Tree (AST) compiler engine (e.g., Roslyn for C#, Babel for JS/TS) which mathematically guarantees the syntactic correctness of the proposed edit *before* writing any text to the physical hard drive. Raw file overwrite by an LLM is physically blocked.
-2. **The "Blast Radius" Ceiling (Mutation Guard)**: To prevent catastrophic hallucination rewrites, the system imposes a deterministic ceiling on every task. Before an AST patch is committed, an `ImpactAnalyzer` calculates the blast radius. If a single agent task attempts to modify more than `MaxNodesModified = 100` AST nodes or impact more than `MaxAffectedSymbols = 50`, the Orchestrator instantly halts the transaction and forces the AI into a sub-task decomposition cycle.
+2. **The "Blast Radius" Ceiling (Mutation Guard)**: To prevent catastrophic hallucination rewrites, the system imposes a deterministic ceiling on every task. Before an AST patch is committed, an `ImpactAnalyzer` calculates the blast radius. If a single agent task attempts to modify more than `max_files_modified = 5` files, `MaxNodesModified = 100` AST nodes, or impact more than `MaxAffectedSymbols = 50`, the Orchestrator instantly halts the transaction and forces the AI into a sub-task decomposition cycle.
 3. **Hidden Version Control Invariant (Time Travel Abstraction)**: The user NEVER interacts with Git or version control CLI. Instead, AstraBuild operates a completely hidden `.sync_git/` repository. The engine silently triggers atomic commits at 4 strict lifecycle checkpoints: *Pre-Generation*, *Post-Patch*, *Build Success*, and *System Reset*. This ensures that if the system gets trapped in a bug loop, or the user clicks "Restore", the backend executes a flawless chronological rollback—abstracting away the violence of version control into a calm, timeline UI.
 4. **The Role-Based File Sandbox Contract**: For role-based file sandboxing, see Agent Safety Boundaries in Section 3.
 5. **The TOCTOU Preventative Hashing Invariant**: To prevent "Time-of-Check to Time-of-Use" corruption (where a file changes while an agent is generating a patch), the Execution Engine computes a SHA-256 `bundle_hash` of the exact lexicographical file state sent to the LLM. Right before the AST patch is applied, the hash is re-computed. If the hashes differ, the patch is instantly aborted.
@@ -2780,8 +2787,12 @@ New memory entries are created only after successful mission completion via a co
 2. Autonomous Feedback Loop generates a structured memory record (outcome, pattern, agent, mission_id)
 3. A dedicated **Memory Recorder Agent** submits the memory record as an Agent Proposal
 
-   > **Memory Recorder Agent:** This is a **special-purpose ephemeral agent** spawned on-demand by the Meta-Learning Engine after mission completion. It is NOT one of the 34 logical agent roles — it is a short-lived functional sub-agent with no persistent existence. It follows the full Agent Proposal → Governance path but is not assigned to any cluster. The Memory Recorder Agent is granted a special **read‑only** tool permission set and a default `AllowedFilePatterns` of `[]` (no files). It is authorised to submit Agent Proposals via the Governance Enforcement Interface; its proposals are always subject to the same validation as any other agent.
-**Memory Write Governance:** Memory writes are validated only at the Pre‑Simulation governance checkpoint. They bypass the Change Simulation Layer (as they are not code changes) and do not go through Post‑Simulation or Pre‑Commit validation. The `scope_validator`, `hallucination_validator`, and `cost_validator` are applied; `architecture_validator` and `tool_permission_validator` are not required.
+   > **Memory Recorder Agent:** The Memory Recorder Agent is NOT a new role. It is an execution specialization of an existing role: `role_id = Agent Orchestrator` with `specialization_type = MEMORY_RECORDER`. It follows the full Agent Proposal → Governance path but is not assigned to any cluster. The Memory Recorder specialization is granted a special **read‑only** tool permission set and a default `AllowedFilePatterns` of `[]` (no files). It is authorised to submit Agent Proposals via the Governance Enforcement Interface; its proposals are always subject to the same validation as any other agent.
+**Memory Write Governance:**
+memory_governance_path = reduced
+checkpoints = {Pre-Simulation only}
+
+Memory writes are validated only at the Pre‑Simulation governance checkpoint. They bypass the Change Simulation Layer (as they are not code changes) and do not go through Post‑Simulation or Pre‑Commit validation. The `scope_validator`, `hallucination_validator`, and `cost_validator` are applied; `architecture_validator` and `tool_permission_validator` are not required.
 
 4. Proposal passes Governance Enforcement Interface
 5. **Memory Layer Gateway** writes the entry to the Memory Layer
