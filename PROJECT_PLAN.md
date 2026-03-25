@@ -726,7 +726,7 @@ No single-point enforcement exists.
 
 ### Global Execution Invariant
 
-*(Note: The 12-Step Intent-to-Deployment workflow is formally mapped as a strict subset of this uncompromising 11-step invariant.)*
+*(Note: The 12-Step Intent-to-Deployment workflow is deterministically mapped to the 11-step Global Execution Invariant. Multiple workflow steps may group under a single invariant step, but no workflow step may execute outside the invariant.)*
 
 **12‑Step Intent‑to‑Deployment Workflow:**
 
@@ -743,6 +743,11 @@ The 12 steps are:
 10) Deployment
 11) Monitoring
 12) Iteration
+
+**Mapping Constraint:**
+The 12 workflow steps are semantic groupings mapped onto the invariant execution pipeline.
+A single invariant step may correspond to multiple workflow steps.
+The invariant remains the sole execution authority.
 
 **Constraint:**
 All steps are STRICTLY mapped to the 11-step Global Execution Invariant.
@@ -1312,7 +1317,7 @@ Balances innovation and stability:
 - Controls when to explore new architectural patterns
 - Prioritizes stable solutions in mature system areas
 - Allocates `exploration_budget = 4` alternative plans per mission for experimentation. This budget is enforced by the Parallel Plan Universe Generator (see Latent Planning & Multi-World Exploration Layer), which generates up to `exploration_budget` candidate plans per mission before pruning. This budget is a subset of `max_parallel_plan_branches = 16` (the total system-wide parallel planning limit).
-- **Parallel Plan Contention Resolution:** When multiple concurrent missions compete for the system-wide `max_parallel_plan_branches = 16` budget, the Parallel Plan Universe Generator applies a fair-share policy: each active mission receives `floor(16 / active_mission_count)` branches. If `active_mission_count = 0` (no active missions), the full budget is available to the next mission that starts. If a mission's `exploration_budget` exceeds its fair-share allocation, excess plan generation is queued until branches free up. No mission may starve others of all planning capacity.
+- **Parallel Plan Contention Resolution:** When multiple concurrent missions compete for the system-wide `max_parallel_plan_branches = 16` budget, the Parallel Plan Universe Generator applies a fair-share policy: each active mission receives `max(1, floor(16 / active_mission_count))` branches, guaranteeing that no mission receives zero planning capacity. If `active_mission_count = 0` (no active missions), the full budget is available to the next mission that starts. If a mission's `exploration_budget` exceeds its fair-share allocation, excess plan generation is queued until branches free up. No mission may starve others of all planning capacity.
 - Prevents excessive architectural churn
 
 Ensures long-term system stability while enabling controlled innovation.
@@ -1603,10 +1608,12 @@ Bridges the gap between user-provided intent, visual state, and system execution
   - risk_level ∈ {0,1,2}
   - Rollback availability
 
-**Risk Level Mapping:** `risk_level = floor(confidence_score * 3)`, producing values 0, 1, or 2. Where:
-- 0 = low risk (confidence ≥ 0.67)
-- 1 = medium risk (confidence ≥ 0.33 and < 0.67)
-- 2 = high risk (confidence < 0.33)
+**Risk Level Mapping:** `risk_level = floor((1 - confidence_score) * 3)`, producing values 0, 1, or 2.
+
+Mapping:
+- confidence_score ∈ [0.67, 1.00] → risk_level = 0 (low risk)
+- confidence_score ∈ [0.33, 0.67) → risk_level = 1 (medium risk)
+- confidence_score ∈ [0.00, 0.33) → risk_level = 2 (high risk)
 
 - **Visual-to-PSG Consistency Enforcement**: Ensures all UI-level modifications are reflected in and validated against the Project State Graph before persistence.
 
