@@ -2736,7 +2736,7 @@ When a STOP is triggered, the system collects structured evidence:
 5. Runtime enters a safe state (e.g., Plan Mode).
 
 **Evidence Archival:**
-- STOP evidence is stored in the Execution State Store and also written to `%TEMP%\\WinForge\\stop-evidence-<id>.json` for forensic analysis.
+- STOP evidence is stored in the Execution State Store and also written to `%TEMP%\\AstraBuild\\stop-evidence-<id>.json` for forensic analysis.
 - Evidence is retained for 90 days.
 
 **Integration:** The STOP mechanism is integrated with the Hardware IPC STOP Contract and the Rollback system.
@@ -3396,7 +3396,7 @@ AstraBuild uses a provider factory pattern to manage multiple cloud AI providers
 - Fallback events are logged to the Observability Pipeline for audit.
 
 **Offline Queue:**
-- When no provider is reachable, requests are queued to `%TEMP%\\WinForge\\offline-queue.json` (JSON Lines format).
+- When no provider is reachable, requests are queued to `%TEMP%\\AstraBuild\\offline-queue.json` (JSON Lines format).
 - The queue is persisted across restarts and replayed in priority order when connectivity is restored.
 - Queued requests expire after 24 hours.
 
