@@ -11,6 +11,18 @@ AstraBuild is a **Universal Autonomous Full-Stack Application Builder** that mus
 
 The system is inherently multi-platform at the architecture level, not as an extension or plugin capability.
 
+## Application Surface Definition (The Build Target)
+
+AstraBuild is a physical desktop application. To prevent agents from interpreting this document solely as an architectural review, it is explicitly declared that **the application to be built** must provide the following concrete user-facing surface:
+
+1. **Chat-Based Generation Interface**: The continuous conversational input surface for providing natural language intent.
+2. **Unified Live Preview Panel**: A real-time visual projection of the application being constructed.
+3. **Execution Monitor & Progress UI**: A declarative status board (e.g., "Designing", "Compiling", "Verifying") shielding the user from raw logs.
+4. **Project Workspace Manager**: A unified graphical view of the current build target's file structure and environment state.
+5. **Multi-Agent Runtime Engine**: The hidden background engine executing the autonomous build pipeline.
+
+AstraBuild is an installable desktop application that houses a continuous improvement loop and autonomous build pipeline.
+
 ## System Boundary: Single-User Autonomous Architecture
 
 AstraBuild is a **strictly single-user autonomous system**.
