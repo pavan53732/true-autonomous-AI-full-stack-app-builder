@@ -19,9 +19,44 @@ AstraBuild is a physical desktop application. To prevent agents from interpretin
 2. **Unified Live Preview Panel**: A real-time visual projection of the application being constructed.
 3. **Execution Monitor & Progress UI**: A declarative status board (e.g., "Designing", "Compiling", "Verifying") shielding the user from raw logs.
 4. **Project Workspace Manager**: A unified graphical view of the current build target's file structure and environment state.
-5. **Multi-Agent Runtime Engine**: The hidden background engine executing the autonomous build pipeline.
 
-AstraBuild is an installable desktop application that houses a continuous improvement loop and autonomous build pipeline.
+*(Note: The Multi-Agent Runtime Engine is the hidden internal background engine executing the autonomous build pipeline, and is strictly NOT part of the user-facing UI surface.)*
+
+### Build Priority Directive (Authoritative)
+
+The PRIMARY objective of this document is:
+**→ To build a working desktop application with the defined Application Surface.**
+
+All architectural systems described below exist ONLY to support this application.
+
+**STRICT INTERPRETATION RULES:**
+- This is NOT an architecture review document.
+- This is NOT a theoretical system design.
+- This is NOT a backend infrastructure specification.
+
+**This IS:**
+**→ A build specification for a physical desktop application.**
+
+Agents MUST:
+1. Treat the Application Surface as the final product.
+2. Treat all intricate subsystems as implementation details serving the UI.
+3. Never prioritize internal architecture over user-facing functionality.
+4. Always map system behavior back to visible application features.
+
+Violation of this interpretation is considered incorrect execution.
+
+### User Interaction Flow (The Product Lifecycle)
+
+To ensure agents think in product terms rather than just system terms, the exact user flow is:
+
+1. **User input:** User enters a natural language prompt in the Chat Interface.
+2. **System plans:** The engine translates this into a Project State Graph (PSG) mutation.
+3. **Execution starts:** The Orchestrator begins the autonomous build pipeline.
+4. **Monitor updates:** The Execution Monitor reflects progress ("Designing...", "Compiling...").
+5. **Preview updates:** The Live Preview Panel hot-reloads the new application state.
+6. **Iteration loop:** The user observes the preview and provides subsequent conversational feedback.
+
+AstraBuild is an installable desktop application that houses this continuous improvement loop.
 
 ## System Boundary: Single-User Autonomous Architecture
 
