@@ -556,7 +556,7 @@ Each task must include:
 - assigned agent_id
 - execution_context (deterministic seed, resource constraints)
 - validation_requirements (test suite, security scan, architecture check)
-- task_priority_score ∈ {0..6}
+- task_priority_score ∈ {0,1,2,3,4,5,6}
 
 Calculation:
 
@@ -621,7 +621,7 @@ All other steps (Governance checkpoints, Simulation, Verification) are defined b
 - **Fallback Paths**: Alternative execution routes when primary path fails
 - **Rollback Triggers**: Automatic rollback on critical failures. Rollback operations are **idempotent**; repeated execution of the same rollback produces the same final state without side effects. If rollback fails, the system retries up to 9 times over a total of 4.5 minutes. Each retry is idempotent. If all retries fail, the system enters Emergency Recovery Mode (see Section 9).
 - **Recovery Missions**: Autonomous re-planning for failed missions
-- **Deadlock Detection**: Cyclic dependency detection and resolution
+- **Deadlock Detection**: Cyclic dependency detection and resolution. When a deadlock is detected, the system aborts the task with the lowest **effective priority score** (as defined in the Mission-to-Task Priority Link). Aborted tasks are not automatically retried; they are marked as failed and trigger re-planning of the affected mission. The Execution Stability Controller reports the deadlock to the Task Graph Engine, which owns resolution.
 
 **Deadlock Detection Ownership:** The Task Graph Engine is the sole authority for deadlock detection and resolution. The Execution Stability Controller and Autonomous Execution Engine do not implement independent deadlock detection; they rely on the Task Graph Engine.
 
@@ -722,6 +722,7 @@ All mutation attempts outside this path are rejected.
 - **Staged Write Isolation:** Tasks within the same mission **do not** see each other's staged writes. Each task operates on the original mission snapshot, independent of other tasks' intermediate writes. Staged writes become visible only after the mission commits and the new snapshot is published.
 - **Dependency‑Aware Snapshot Propagation**: If a task has an outgoing `DEPENDS_ON` edge to another task within the same mission, the first task may request that its staged writes be made visible to the dependent task. The system may create a **derived snapshot** (a new immutable view) that includes the changes, which is then used as the base snapshot for the dependent task. This preserves causality while maintaining isolation between non‑dependent tasks.
 - If a task's expected snapshot version conflicts with the current live PSG at commit time, it is **rejected and replanned**
+- **Snapshot Conflict Retry:** If a task is rejected due to snapshot version conflict, the system retries up to 3 times. Each retry uses the latest snapshot. If all retries fail, the mission is aborted and logged.
 
 Guarantees:
 - No partial state visibility
@@ -867,7 +868,7 @@ Transforms detected opportunities into structured missions containing objectives
 ---
 
 **Priority & Impact Evaluator**
-mission_priority_score ∈ {0..7}
+mission_priority_score ∈ {0,1,2,3,4,5,6,7}
 
 Calculation:
 
@@ -907,7 +908,7 @@ Maintains the global mission queue and schedules missions for execution through 
 effective_task_priority = task_priority_score + floor(mission_priority_score / 2)
 ```
 
-Where `mission_priority_score ∈ {0..7}` and `floor(mission_priority_score / 2)` yields a boost of 0–3. This ensures deterministic, predictable priority ordering. Task scheduling authority remains exclusively with the Task Graph Engine and Global Task Queue.
+Where `mission_priority_score ∈ {0,1,2,3,4,5,6,7}` and `floor(mission_priority_score / 2)` yields a boost of 0–3. This ensures deterministic, predictable priority ordering. Task scheduling authority remains exclusively with the Task Graph Engine and Global Task Queue.
 
 ---
 
@@ -1235,6 +1236,11 @@ Bridges the gap between user-provided intent, visual state, and system execution
   - confidence_score ∈ [0.0, 1.0] (continuous float, enables gradient calibration)
   - risk_level ∈ {0,1,2}
   - Rollback availability
+
+**Risk Level Mapping:** `risk_level = floor(confidence_score * 3)`, producing values 0, 1, or 2. Where:
+- 0 = low risk (confidence ≥ 0.67)
+- 1 = medium risk (confidence ≥ 0.33 and < 0.67)
+- 2 = high risk (confidence < 0.33)
 
 - **Visual-to-PSG Consistency Enforcement**: Ensures all UI-level modifications are reflected in and validated against the Project State Graph before persistence.
 
@@ -1572,6 +1578,8 @@ Scheduling MAY:
 - delay execution for stability
 
 This ensures stable operation when large numbers of agents run simultaneously.
+
+**Scheduling Fairness:** The priority‑ordered queue may, in theory, allow starvation of low‑priority tasks if high‑priority tasks are continuously injected. Implementers should consider adding a fairness mechanism (e.g., aging of queued tasks or occasional round‑robin scheduling) to prevent indefinite starvation.
 
 - **Internal Mechanisms**:
   - **Parallelism Engine (Single Active Transaction)**: While AI planning and code generation can occur concurrently across massive worker pools, all filesystem mutation and toolchain invocation is strictly serialized. The Orchestrator processes exactly one `ConstructionTransaction` at a time to mathematically eliminate race conditions and corrupted builds. This serialization means that while 128 workers may be generating code, planning, or analysing simultaneously, all filesystem writes are queued and processed one at a time. This ensures mathematical determinism and prevents corruption, at the cost of throughput on write‑heavy missions.
@@ -1994,10 +2002,10 @@ No cost-based reasoning is used.
 
 Produces formal system-level metrics:
 
-- architecture_health_score ∈ {0,1}
-- complexity_score ∈ {0,1,2}
-- coupling_score ∈ {0,1,2}
-- failure_risk_score ∈ {0,1,2}
+- architecture_health_score ∈ {0,1} (0 = unhealthy, 1 = healthy)
+- complexity_score ∈ {0,1,2} (0 = low, 1 = medium, 2 = high)
+- coupling_score ∈ {0,1,2} (0 = loose, 1 = moderate, 2 = tight)
+- failure_risk_score ∈ {0,1,2} (0 = low, 1 = medium, 2 = high)
 
 Diagnostics Engine:
 
@@ -2063,6 +2071,13 @@ AstraBuild implements a structured error classification system that enables auto
 3. **Validation** – Fix is validated against blast radius limits and governance rules.
 4. **Application** – Host applies the fix, creating a rollback point before changes.
 5. **Audit** – All auto‑fix actions are logged to the Execution State Store.
+
+
+**Auto‑Fix Status Definitions:**
+- ✅ Yes: The system automatically applies the fix (subject to governance and blast radius limits).
+- ⚠️ Suggest: The system generates a proposed fix and places it in the diff queue for user approval; it is not auto‑applied.
+- ❌ No: The system does not attempt to fix; the error is logged and may require manual intervention.
+
 
 **Security Controls:**
 - Fixes are only applied if they pass the same Governance Enforcement Interface as any other action.
@@ -2259,6 +2274,8 @@ New memory entries are created only after successful mission completion via a co
 3. A dedicated **Memory Recorder Agent** submits the memory record as an Agent Proposal
 
    > **Memory Recorder Agent:** This is a **special-purpose ephemeral agent** spawned on-demand by the Meta-Learning Engine after mission completion. It is NOT one of the 34 logical agent roles — it is a short-lived functional sub-agent with no persistent existence. It follows the full Agent Proposal → Governance path but is not assigned to any cluster. The Memory Recorder Agent is granted a special **read‑only** tool permission set and a default `AllowedFilePatterns` of `[]` (no files). It is authorised to submit Agent Proposals via the Governance Enforcement Interface; its proposals are always subject to the same validation as any other agent.
+**Memory Write Governance:** Memory writes are validated only at the Pre‑Simulation governance checkpoint. They bypass the Change Simulation Layer (as they are not code changes) and do not go through Post‑Simulation or Pre‑Commit validation. The `scope_validator`, `hallucination_validator`, and `cost_validator` are applied; `architecture_validator` and `tool_permission_validator` are not required.
+
 4. Proposal passes Governance Enforcement Interface
 5. **Memory Layer Gateway** writes the entry to the Memory Layer
 
@@ -2542,6 +2559,10 @@ Only approved actions proceed to execution.
 
 **Micro‑Mission Governance Exception:**
 For micro‑missions (as defined in Section 1.6), the set of required validators may be reduced. A micro‑mission must declare which validators it requests, and the Governance Enforcement Interface applies only those validators. However, the following validators are **always** required for any micro‑mission: `scope_validator`, `hallucination_validator`, and `cost_validator`. `architecture_validator` and `tool_permission_validator` may be skipped only if the micro‑mission explicitly states that it does not modify architecture or tool calls.
+
+
+A micro‑mission includes a `skipValidators` field in its Agent Proposal. The Governance Enforcement Interface validates that the requested skip is permissible (only `architecture_validator` and `tool_permission_validator` may be skipped; `scope_validator`, `hallucination_validator`, and `cost_validator` are always required). If an invalid skip is requested, the proposal is rejected.
+
 
 **Failure Domain Isolation System**
 
@@ -2942,7 +2963,7 @@ The entry point when no projects exist:
 │           [ Start Building ]            │
 │                                         │
 │  [Web App] [Dashboard] [API + Frontend] │
-│  [Mobile App] [CLI Tool] [Full-Stack]   │
+│  [Mobile App] [Desktop App] [Full-Stack]│
 │                                         │
 └─────────────────────────────────────────┘
 ```
