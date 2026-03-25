@@ -1514,7 +1514,8 @@ To enable coherent multi‑mission planning, AstraBuild maintains a persistent *
 - **Long‑Term Goal Tracking:** The Goal Completion & Convergence Engine uses the roadmap to assess whether overarching architectural goals are being achieved over weeks or months.
 
 **Storage and Access:**
-- The Roadmap Memory Graph is stored as part of the Cross-Project Knowledge Graph, allowing it to persist across sessions and projects.
+- The Roadmap Memory Graph is stored within the project-specific **Memory Layer**, managed by the **Memory Layer Gateway**, allowing it to persist across sessions and missions for the current project.
+- **Cross-Project Strategy Patterns** (learned from cumulative outcomes) are abstracted and stored in the **Cross-Project Knowledge Graph**, while the graph instance remains project-isolated.
 - Access is read‑only for agents during planning; updates occur via the same governance‑enforced path as all state mutations.
 
 **Integration:** The Strategic Planning Engine reads the roadmap before generating new strategic missions, ensuring that long‑term plans build on past experience.
