@@ -281,15 +281,15 @@ Regardless of the target framework (.NET, React, Android, Python), the AI agents
 - **PSG Transaction Boundary**: All state mutations are funneled through a single transaction layer that enforces governance validation before any write is committed to the Project State Graph.
 - **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
 - **All user-provided intents are interpreted, not executed**
-- **Hub-and-Spoke Communication Topology**: Generative AI Agents are strictly prohibited from mutating the file system, triggering compilers, or interacting with the UI directly. All state is mediated by the Orchestrator. Agents may only submit deterministic structural patches to the Orchestrator, which acts as the single choke-point for executing filesystem writes and system builds.
+- **Hub-and-Spoke Communication Topology**: Generative AI Agents are strictly prohibited from mutating the file system, triggering compilers, or interacting with the UI directly. All state is mediated by the Orchestrator. Agents are ONLY AUTHORIZED to submit deterministic structural patches to the Orchestrator, which acts as the single choke-point for executing filesystem writes and system builds.
 - **"Safety-First" Implementation Sequence Invariant**: The AstraBuild software development lifecycle mandates that the Orchestrator, State Machine, and Governance Enforcement layers MUST be engineered and sealed *before* any Generative AI logic is integrated. Proceeding out-of-order guarantees uncontrolled AI hallucination and architecture corruption.
 
 ### 1. Intent & Product Design Engine
 
 The entry point of the system, responsible for converting high-level ideas into actionable development blueprints:
 
-- **"Results Only" UX Philosophy**: The UI MUST strictly decouple the internal violence of agentic self-healing from the user experience. The user should never observe raw build errors, retry loops, or system amnesia events. They are presented solely with declarative progress mapping (e.g., "Designing", "Compiling", "Verifying") and the final working application.
-- **The "Hidden System Prompt" Freedom Contract**: The system mathematically restricts all hidden prompt instructions to enforcing **Framework Rules** (e.g., "Always use SQLite", "Generate valid MSIX packages"). The Orchestrator is explicitly barred from constraining the user's custom functional idea or forcing proprietary architectural patterns. The user exercises absolute supremacy over *how* the code is structured, what the application does, what it looks like, and what features it has.
+- **"Results Only" UX Philosophy**: The UI MUST strictly decouple the internal violence of agentic self-healing from the user experience. The user MUST never observe raw build errors, retry loops, or system amnesia events. They are presented solely with declarative progress mapping (e.g., "Designing", "Compiling", "Verifying") and the final working application.
+- **The "Hidden System Prompt" Freedom Contract**: The system mathematically restricts all hidden prompt instructions to enforcing **Framework Rules** (e.g., "Always use SQLite", "Generate valid MSIX packages"). The Orchestrator is explicitly barred from constraining the user's custom functional idea. The user exercises absolute supremacy over *the feature suite, styling, and business logic*, while AstraBuild retains absolute structural authority over architecture invariants and security.
 - **Prompt Understanding Engine**: Interprets user-provided intent and decomposes ideas into structured tasks.
 - **Requirement Extractor**: Automatically identifies features, user personas, API requirements, and database models.
 - **Platform Strategy Engine**:
@@ -2078,7 +2078,7 @@ AstraBuild implements a structured error classification system that enables auto
 **Auto‑Fix Status Definitions:**
 - ✅ Yes: The system automatically applies the fix (subject to governance and blast radius limits).
 - ⚠️ Suggest: The system generates a proposed fix and places it in the diff queue for user approval; it is not auto‑applied.
-- ❌ No: The system does not attempt to fix; the error is logged and may require manual intervention.
+- ❌ No: The system does not attempt to fix; the error is logged and REQUIRES manual intervention.
 
 
 **Security Controls:**
@@ -2560,10 +2560,9 @@ ELSE
 Only approved actions proceed to execution.
 
 **Micro‑Mission Governance Exception:**
-For micro‑missions (as defined in Section 1.6), the set of required validators may be reduced. A micro‑mission must declare which validators it requests, and the Governance Enforcement Interface applies only those validators. However, the following validators are **always** required for any micro‑mission: `scope_validator`, `hallucination_validator`, and `cost_validator`. `architecture_validator` and `tool_permission_validator` may be skipped only if the micro‑mission explicitly states that it does not modify architecture or tool calls.
+For micro‑missions (as defined in Section 1.6), the set of required validators is explicitly tailored. A micro‑mission must declare which validators it requests, and the Governance Enforcement Interface applies only those validators. However, the following validators are **always** required for any micro‑mission: `scope_validator`, `hallucination_validator`, and `cost_validator`. `architecture_validator` and `tool_permission_validator` are EXEMPTED only if the micro‑mission explicitly states that it does not modify architecture or tool calls.
 
-
-A micro‑mission includes a `skipValidators` field in its Agent Proposal. The Governance Enforcement Interface validates that the requested skip is permissible (only `architecture_validator` and `tool_permission_validator` may be skipped; `scope_validator`, `hallucination_validator`, and `cost_validator` are always required). If an invalid skip is requested, the proposal is rejected.
+A micro‑mission includes a `skipValidators` field in its Agent Proposal. The Governance Enforcement Interface validates that the requested skip is permissible (only `architecture_validator` and `tool_permission_validator` are authorized to be skipped; `scope_validator`, `hallucination_validator`, and `cost_validator` are always required). If an invalid skip is requested, the proposal is rejected.
 
 
 **Failure Domain Isolation System**
@@ -2723,7 +2722,7 @@ The system defines **logical roles**, not fixed agent instances.
 
 At runtime:
 
-- Each logical role must spawn multiple agent instances
+- Each logical role instantiates ONE OR MORE active agent threads based on task concurrency metrics.
 - Composite roles expand into specialized sub-agents
 
 Examples:
