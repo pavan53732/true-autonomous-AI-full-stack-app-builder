@@ -587,14 +587,14 @@ Scheduling authority is EXCLUSIVE:
 - **Autonomous System Control Plane** → system-wide coordination (planning, governance, lifecycle)
 - **Execution Runtime Control Plane** → process/runtime management only (process creation, sandboxing, worker lifecycle)
 
-## Cost-Neutrality Invariant
+## Economic Neutrality Invariant
 
-AstraBuild must not optimize, rank, route, or make decisions based on economic cost.
+AstraBuild must not optimize, rank, route, or make decisions based on **external economic/financial cost**.
 
 Prohibited:
-- Monetary cost (API, compute, infrastructure)
+- Monetary cost (API fees, cloud infrastructure, token pricing)
 - Token usage as a pricing or savings signal
-- Cost-performance tradeoffs
+- Cost-performance tradeoffs (cheaper vs better)
 - Budget-aware execution strategies
 
 Allowed decision factors:
@@ -603,7 +603,10 @@ Allowed decision factors:
 - Performance
 - Architectural integrity
 
-Any cost-based reasoning is a governance violation and must be rejected.
+**Structural Decoupling:**
+This invariant refers strictly to **external financial expenditure**. It does NOT prohibit **Structural Capacity Constraints**, which are mandatory safety invariants for local system stability and host resource protection.
+
+Any reasoning based on financial "yield" or "savings" is a governance violation and must be rejected.
 
 ### Cost Model Exclusion Rationale
 
@@ -707,6 +710,14 @@ This ensures that **no parallel authority path** exists outside the invariant. T
 - max_worker_processes = 128
 time_unit = logical_tick
 tick_duration_ms = constant (not used in logic)
+
+**Safety & Stability Rationale:**
+These capacity limits are **Non-Economic Invariants**. They exist strictly to:
+1.  **Protect Host Resources**: Prevent mission-drift or hallucinated recursion from exhausting Host CPU/RAM.
+2.  **Ensure PSG Determinism**: Maintain deterministic query performance across the Project State Graph.
+3.  **Prevent State Corruption**: Bounding the "Blast Radius" ensures that mutations remain within the validation capacity of the Governance Enforcement Interface.
+
+These limits are **Physical Safety Guards**, not economic optimizations.
 
 task_execution_time_ticks is defined per task_type:
 
@@ -4151,7 +4162,8 @@ This system includes:
 
 Excluded intentionally:
 
-- cost optimization systems
+- **Economic Yield/Cost Optimization systems**
+- **Financial Budget-Aware Reasoning**
 - human approval workflows
 - multi-user coordination systems
 - Stage-Based Development Roadmap
