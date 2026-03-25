@@ -653,7 +653,7 @@ These do not violate Zero-Boilerplate rule.
 
 - **Project State Graph (PSG)** is the single source of truth
 - **Agents operate on PSG, not user-provided intent (normalized from prompts)**
-- **User-provided intent is advisory and always interpreted, never directly executed**
+- **The User-Intent Boundary**: The user exercises **absolute supremacy over the functional outcome** (features, styling, business logic). However, the **raw user prompt is advisory regarding execution mechanics**; it is always interpreted into PSG-aligned structural intents to ensure architectural integrity and safety. Intent is never directly executed as a system command.
 - **All actions must pass Governance Enforcement before execution**
 - **Governance Enforcement is the final authority on all state mutations**
 - **All execution decisions must include an explicit justification and confidence score before being applied**
@@ -662,7 +662,7 @@ These do not violate Zero-Boilerplate rule.
 - **Agents cannot modify their own permissions, roles, or authority boundaries**
 - **PSG Transaction Boundary**: All state mutations are funneled through a single transaction layer that enforces governance validation before any write is committed to the Project State Graph.
 - **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
-- **All user-provided intents are interpreted, not executed**
+- **All user-provided prompts are interpreted into structured intents, never executed as raw system-level instructions.**
 - **Hub-and-Spoke Communication Topology**: Generative AI Agents are strictly prohibited from mutating the file system, triggering compilers, or interacting with the UI directly. All state is mediated by the Orchestrator. Agents are ONLY AUTHORIZED to submit deterministic structural patches to the Orchestrator, which acts as the single choke-point for executing filesystem writes and system builds.
 - **"Safety-First" Implementation Sequence Invariant**: The AstraBuild software development lifecycle mandates that the Orchestrator, Project Lifecycle State Machine, and Governance Enforcement layers MUST be engineered and sealed *before* any Generative AI logic is integrated. Proceeding out-of-order guarantees uncontrolled AI hallucination and architecture corruption.
 
