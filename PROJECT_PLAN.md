@@ -259,6 +259,26 @@ If mapping missing:
 
 ---
 
+### 11.1 TERMINOLOGY ENFORCEMENT RULE (CANONICAL VOCABULARY)
+
+The term "phase" is STRICTLY FORBIDDEN.
+
+Rationale:
+- introduces ambiguity
+- implies non-deterministic grouping
+- conflicts with invariant execution model
+
+Allowed replacements:
+- STEP (strict execution order)
+- STAGE (non-executable grouping)
+- STATE (system/UI state)
+- MODE (operational mode)
+- CYCLE (loop constructs)
+
+Any usage of "phase" MUST be rejected during validation.
+
+---
+
 ### 12. IMPLEMENTATION PRIORITY ORDER (STRICT)
 
 ```md
@@ -624,7 +644,7 @@ The entry point of the system, responsible for converting high-level ideas into 
   Operating as a deterministic logic gate (Archetype Resolver), it enforces pure user intent when deciding the target framework:
   1. **Explicit User Supremacy**: If the user explicitly names a framework (e.g., "Build this in Vue.js"), the Archetype Resolver instantly locks the matrix to the requested framework.
   2. **Capability-Driven Inference**: If the prompt is ambiguous, the system relies on the LLM to infer the most logical framework based on the requested capabilities (e.g., "low-level memory access" infers Rust/C++). AstraBuild enforces no hardcoded "Modern Defaults".
-  3. **Ambiguity Escalation (Anti-Hallucination)**: If a user prompts an unresolvable contradiction (e.g., "Build a Python-based frontend UI for an iOS app"), the system immediately suspends the intent phase and escalates to the human operator for clarification.
+  3. **Ambiguity Escalation (Anti-Hallucination)**: If a user prompts an unresolvable contradiction (e.g., "Build a Python-based frontend UI for an iOS app"), the system immediately suspends the intent processing step and escalates to the human operator for clarification.
 
 - **Cross-Platform Architecture Planner**:
   Designs architecture that:
@@ -684,7 +704,7 @@ User-provided intent
 The `Hierarchy of control` flow above includes the **Interaction Layer** and **Planning** steps that occur **before** the `Global Execution Invariant` step 1 (Agent Proposal). The invariant begins at Agent Proposal and is strictly linear. This is consistent with the `Latent Planning Placement` note already present.
 ### Simulation Enforcement Rule (Strict)
 
-Simulation is a non-executing analytical phase.
+Simulation is a non-executing analytical step within the invariant.
 
 It:
 - cannot mutate PSG
@@ -695,7 +715,7 @@ All simulation outputs must pass Governance before execution is allowed.
 
 No execution path must exist that bypasses simulation for non-trivial changes.
 
-Governance is enforced at ALL critical phases:
+Governance is enforced at ALL critical steps:
 
 - before simulation
 - after simulation
@@ -706,10 +726,30 @@ No single-point enforcement exists.
 
 ### Global Execution Invariant
 
-*(Note: The 12-Phase Intent-to-Deployment workflow is formally mapped as a strict subset of this uncompromising 11-step invariant. No phase may operate outside these checkpoints.)*
+*(Note: The 12-Step Intent-to-Deployment workflow is formally mapped as a strict subset of this uncompromising 11-step invariant.)*
 
-**12‑Phase Intent‑to‑Deployment Workflow:**
-The 12 phases are: 1) Intent Capture, 2) Requirement Structuring, 3) Architecture Planning, 4) Task Decomposition, 5) Implementation, 6) Testing, 7) Review, 8) Build, 9) Verification, 10) Deployment, 11) Monitoring, 12) Iteration. These phases are mapped to the 11‑step invariant as a logical grouping; no phase bypasses the invariant steps.
+**12‑Step Intent‑to‑Deployment Workflow:**
+
+The 12 steps are:
+1) Intent Capture
+2) Requirement Structuring
+3) Architecture Planning
+4) Task Decomposition
+5) Implementation
+6) Testing
+7) Review
+8) Build
+9) Verification
+10) Deployment
+11) Monitoring
+12) Iteration
+
+**Constraint:**
+All steps are STRICTLY mapped to the 11-step Global Execution Invariant.
+No step may:
+- execute outside the invariant
+- bypass invariant checkpoints
+- reorder invariant execution
 Execution Order (STRICT — NO DEVIATION):
 
 1. Agent Proposal
@@ -785,7 +825,7 @@ The PSG does NOT store:
 
 #### Architecture Governance System
 
-A centralized enforcement layer that ensures architectural correctness across all system phases.
+A centralized enforcement layer that ensures architectural correctness across all system stages.
 
 This system does NOT perform reasoning. It enforces decisions produced by the Architecture Intelligence System.
 
@@ -1054,7 +1094,7 @@ All mutation attempts outside this path are rejected.
 Guarantees:
 - No partial state visibility
 - Deterministic reasoning context
-- Conflict detection during commit phase
+- Conflict detection during commit step
 
 #### Snapshot Consistency Rule
 
@@ -1147,7 +1187,7 @@ Maintains long-running improvement cycles across the entire project lifecycle. R
 ---
 
 **Strategic Planning Engine**
-Handles multi-phase, long-horizon development initiatives such as framework migrations, architectural refactors (monolith → microservices), technology stack upgrades, and system rewrites. Breaks strategic goals into executable mission sequences that span weeks or months of autonomous development work.
+Handles multi-stage, long-horizon development initiatives such as framework migrations, architectural refactors (monolith → microservices), technology stack upgrades, and system rewrites. Breaks strategic goals into executable mission sequences that span weeks or months of autonomous development work.
 
 ---
 
@@ -1956,7 +1996,7 @@ Advanced reasoning over the entire codebase to ensure safe growth:
 
 1. **The Code Intelligence Invariant (AST Mutation Mandate)**: The AI is **STRICTLY FORBIDDEN** from using Regex or raw "String Search/Replace" to mutate source code. All agent patch intents MUST be routed through an Abstract Syntax Tree (AST) compiler engine (e.g., Roslyn for C#, Babel for JS/TS) which mathematically guarantees the syntactic correctness of the proposed edit *before* writing any text to the physical hard drive. Raw file overwrite by an LLM is physically blocked.
 2. **The "Blast Radius" Ceiling (Mutation Guard)**: To prevent catastrophic hallucination rewrites, the system imposes a deterministic ceiling on every task. Before an AST patch is committed, an `ImpactAnalyzer` calculates the blast radius. If a single agent task attempts to modify more than `MaxNodesModified = 100` AST nodes or impact more than `MaxAffectedSymbols = 50`, the Orchestrator instantly halts the transaction and forces the AI into a sub-task decomposition cycle.
-3. **Hidden Version Control Invariant (Time Travel Abstraction)**: The user NEVER interacts with Git or version control CLI. Instead, AstraBuild operates a completely hidden `.sync_git/` repository. The engine silently triggers atomic commits at 4 strict lifecycle phases: *Pre-Generation*, *Post-Patch*, *Build Success*, and *System Reset*. This ensures that if the system gets trapped in a bug loop, or the user clicks "Restore", the backend executes a flawless chronological rollback—abstracting away the violence of version control into a calm, timeline UI.
+3. **Hidden Version Control Invariant (Time Travel Abstraction)**: The user NEVER interacts with Git or version control CLI. Instead, AstraBuild operates a completely hidden `.sync_git/` repository. The engine silently triggers atomic commits at 4 strict lifecycle checkpoints: *Pre-Generation*, *Post-Patch*, *Build Success*, and *System Reset*. This ensures that if the system gets trapped in a bug loop, or the user clicks "Restore", the backend executes a flawless chronological rollback—abstracting away the violence of version control into a calm, timeline UI.
 4. **The Role-Based File Sandbox Contract**: For role-based file sandboxing, see Agent Safety Boundaries in Section 3.
 5. **The TOCTOU Preventative Hashing Invariant**: To prevent "Time-of-Check to Time-of-Use" corruption (where a file changes while an agent is generating a patch), the Execution Engine computes a SHA-256 `bundle_hash` of the exact lexicographical file state sent to the LLM. Right before the AST patch is applied, the hash is re-computed. If the hashes differ, the patch is instantly aborted.
 
@@ -1968,7 +2008,7 @@ Advanced reasoning over the entire codebase to ensure safe growth:
 
 1. **Precision Retrieval**: Locates modified files via semantic search and dependency traversal.
 2. **Atomic Context Builder**: Injects specific file segments and symbol definitions instead of full files.
-3. **Two-Phase Constraint Generator**: Enforces a strict two-phase LLM response: Phase 1 (Silent Analysis) where the agent emits its reasoning, and Phase 2 (Code Payload) where it emits the diff. The Orchestrator mathematically discards Phase 1 and *only* executes Phase 2, permanently preventing "chatty" responses from breaking the parser.
+3. **Two-Step Constraint Generator**: Enforces a strict two-step LLM response: Step 1 (Silent Analysis) where the agent emits its reasoning, and Step 2 (Code Payload) where it emits the diff. The Orchestrator mathematically discards Step 1 and *only* executes Step 2, permanently preventing "chatty" responses from breaking the parser.
 4. **AST Patch Generator**: Produces verifiable AST node replacements (not string diffs).
 5. **Impact Analyzer**: Runs the Blast Radius calculation to approve or reject the patch scale.
 6. **Structural Validator (Banned Path Integrity Lock)**: Enforces a strict `BannedPaths` matrix, mathematically rejecting any AI patch that attempts to mutate compiled output directories (`node_modules/`, `bin/`, `obj/`, `dist/`), the hidden `.sync_git/` database, or internal state files. 
@@ -2557,7 +2597,7 @@ When a STOP is triggered, the system collects structured evidence:
 
 **Integration:** The STOP mechanism is integrated with the Hardware IPC STOP Contract and the Rollback system.
 
-- **The Hardware IPC STOP Contract**: When a human operator clicks "Cancel/STOP", AstraBuild does not rely on graceful software flags (which a stuck AI loop might ignore). Instead, the C# Host instantly severs the physical Named Pipe connecting it to the Node.js Runtime, immediately blinding and paralyzing the AI process. The Host then physically kills the Runtime process tree, logs the exact `IPC_STOP` generation phase to the `AuditLog` for safety review, and restores the project to the pre-generation snapshot.
+- **The Hardware IPC STOP Contract**: When a human operator clicks "Cancel/STOP", AstraBuild does not rely on graceful software flags (which a stuck AI loop might ignore). Instead, the C# Host instantly severs the physical Named Pipe connecting it to the Node.js Runtime, immediately blinding and paralyzing the AI process. The Host then physically kills the Runtime process tree, logs the exact `IPC_STOP` generation step to the `AuditLog` for safety review, and restores the project to the pre-generation snapshot.
 - **Unbounded Environment Recovery**: Unlike code mutations, environmental loops (e.g., low disk space, missing SDKs, NuGet cache corruption) trigger continuous retries indefinitely while prompting the user for manual intervention. The system never gives up on environmental failures on its own.
 
 ### 7. Memory, Knowledge & Meta-Learning Layer
@@ -3645,7 +3685,7 @@ Excluded intentionally:
 - cost optimization systems
 - human approval workflows
 - multi-user coordination systems
-- Phased Development Roadmap
+- Stage-Based Development Roadmap
 - AI-powered CLI interface within the application
 - Developer Mode
 
