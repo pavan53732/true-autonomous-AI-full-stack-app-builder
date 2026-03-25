@@ -1,6 +1,287 @@
 # AstraBuild: The Universal Autonomous Full-Stack Application Builder
 
-> **Document Context:** This file serves as the definitive, timeless architectural blueprint and core specification for the AstraBuild system. It outlines structural design, autonomous boundaries, multi-agent frameworks, and execution principles.
+---
+
+## EXECUTION MODE: ZERO-AMBIGUITY BUILD SPEC
+
+### 0. Document Binding Declaration (MANDATORY HEADER)
+
+```md
+DOCUMENT_MODE = EXECUTION_SPEC
+INTERPRETATION_MODE = STRICT
+AMBIGUITY_TOLERANCE = 0
+PRIMARY_OUTPUT = WORKING_DESKTOP_APPLICATION
+```
+
+**Hard Rule:**
+Any agent reading this document MUST:
+* reject subjective interpretation
+* reject architectural abstraction without mapping to UI
+* reject missing execution mapping
+
+---
+
+### 1. PRIMARY OUTPUT CONTRACT (ABSOLUTE AUTHORITY)
+
+```md
+OUTPUT_TYPE = DESKTOP_APPLICATION
+EXECUTABLE_REQUIRED = TRUE
+INSTALLABLE_REQUIRED = TRUE
+RUNTIME_ENVIRONMENT = WINDOWS_DESKTOP
+```
+
+#### 1.1 Deliverable Definition
+A build is considered **SUCCESSFUL IF AND ONLY IF**:
+```md
+- Application launches without crash
+- UI renders all required surfaces
+- User can input prompt
+- System produces visible output in preview
+- Iteration loop is functional
+```
+Else:
+```md
+BUILD_STATUS = FAILURE
+```
+
+---
+
+### 2. APPLICATION SURFACE CONTRACT (NON-NEGOTIABLE)
+
+```md
+UI_COMPONENTS = {
+  CHAT_INTERFACE,
+  LIVE_PREVIEW_PANEL,
+  EXECUTION_MONITOR,
+  WORKSPACE_MANAGER
+}
+```
+
+#### 2.1 UI Completeness Rule
+```md
+FOR EACH component IN UI_COMPONENTS:
+    MUST_EXIST(component)
+    MUST_BE_RENDERABLE(component)
+    MUST_BE_INTERACTIVE(component)
+```
+Failure of ANY component:
+```md
+→ BUILD INVALID
+```
+
+---
+
+### 3. USER FLOW CONTRACT (EXECUTION LOOP)
+
+```md
+FLOW = [
+  INPUT,
+  PLAN,
+  EXECUTE,
+  MONITOR,
+  PREVIEW,
+  ITERATE
+]
+```
+
+#### 3.1 Deterministic Flow Enforcement
+```md
+FOR step IN FLOW:
+    step MUST execute in ORDER
+    step MUST NOT be skipped
+    step MUST produce observable state change
+```
+
+---
+
+### 4. SYSTEM ROLE CLASSIFICATION (HARD BOUNDARIES)
+
+#### 4.1 UI Layer (User Visible)
+```md
+VISIBLE = TRUE
+COMPONENTS = {
+  CHAT_INTERFACE,
+  LIVE_PREVIEW_PANEL,
+  EXECUTION_MONITOR,
+  WORKSPACE_MANAGER
+}
+```
+
+#### 4.2 Internal Systems (Non-Visible)
+```md
+VISIBLE = FALSE
+SYSTEMS = {
+  MULTI_AGENT_RUNTIME,
+  CONTROL_PLANE,
+  EXECUTION_ENGINE,
+  PSG,
+  GOVERNANCE_LAYER
+}
+```
+
+#### 4.3 Boundary Rule
+```md
+IF system ∈ INTERNAL:
+    MUST NOT appear in UI
+    MUST NOT expose raw data
+```
+
+---
+
+### 5. ARCHITECTURE DEPENDENCY RULE (CRITICAL)
+
+```md
+ALL_SYSTEMS → SUPPORT(UI)
+```
+
+#### 5.1 Inversion Prohibition
+```md
+UI MUST NOT depend on internal complexity
+INTERNAL systems MUST adapt to UI requirements
+```
+Violation:
+```md
+→ ARCHITECTURE INVALID
+```
+
+---
+
+### 6. EXECUTION AUTHORITY MODEL (LOCKED)
+
+```md
+EXECUTION_OWNER = AUTONOMOUS_EXECUTION_ENGINE
+WRITE_OWNER = PSG_MUTATION_GATEWAY
+VALIDATION_OWNER = GOVERNANCE_INTERFACE
+```
+
+#### 6.1 Forbidden Actions
+```md
+AGENTS:
+  - CANNOT execute
+  - CANNOT write to filesystem
+  - CANNOT mutate PSG
+
+RUNTIME:
+  - CANNOT bypass invariant
+```
+
+---
+
+### 7. GLOBAL EXECUTION INVARIANT (ENFORCED PATH)
+
+```md
+PIPELINE = [
+  AGENT_PROPOSAL,
+  PRE_SIMULATION_GOVERNANCE,
+  SIMULATION,
+  POST_SIMULATION_GOVERNANCE,
+  TASK_GRAPH,
+  EXECUTION_ENGINE,
+  TOOL_LAYER,
+  VERIFICATION,
+  PRE_COMMIT_GOVERNANCE,
+  PSG_MUTATION,
+  PSG_UPDATE
+]
+```
+
+#### 7.1 Enforcement Rule
+```md
+FOR step IN PIPELINE:
+    MUST_EXECUTE(step)
+    NO_SKIP
+    NO_REORDER
+```
+
+---
+
+### 8. VALIDATION CONTRACT (BUILD ACCEPTANCE)
+
+#### 8.1 Functional Validation
+```md
+ASSERT UI_RENDERED == TRUE
+ASSERT INPUT_ACCEPTED == TRUE
+ASSERT OUTPUT_VISIBLE == TRUE
+ASSERT LOOP_ACTIVE == TRUE
+```
+
+#### 8.2 System Validation
+```md
+ASSERT NO_DIRECT_RUNTIME_WRITE == TRUE
+ASSERT GOVERNANCE_ENFORCED == TRUE
+ASSERT PSG_SINGLE_SOURCE == TRUE
+```
+
+---
+
+### 9. FAILURE CONDITIONS (EXPLICIT)
+
+```md
+FAIL IF:
+- UI not visible
+- Flow broken
+- Execution bypass detected
+- PSG inconsistency detected
+- Governance skipped
+- Agent performs unauthorized action
+```
+
+---
+
+### 10. PROHIBITED INTERPRETATIONS (HARD BLOCK)
+
+```md
+THIS DOCUMENT IS NOT:
+- Architecture documentation
+- Research system
+- Theoretical design
+- Backend-only system
+```
+
+---
+
+### 11. MAPPING RULE (ANTI-ABSTRACTION)
+
+Every subsystem MUST define:
+```md
+SUBSYSTEM → UI_IMPACT_MAPPING
+```
+Example:
+```md
+Execution Engine → updates Execution Monitor
+PSG → drives Preview state
+Agents → invisible
+```
+If mapping missing:
+```md
+→ SUBSYSTEM INVALID
+```
+
+---
+
+### 12. IMPLEMENTATION PRIORITY ORDER (STRICT)
+
+```md
+ORDER = [
+  UI_SURFACE,
+  USER_FLOW,
+  EXECUTION_LOOP,
+  GOVERNANCE,
+  PSG,
+  AGENTS,
+  OPTIMIZATION
+]
+```
+
+#### 12.1 Critical Rule
+```md
+IF UI not complete:
+    STOP ALL DEVELOPMENT
+```
+
+---
+
+> **Document Context:** This is the detailed descriptive architecture that underpins the literal build contract above. The rules above possess absolute supremacy over any ambiguity below.
 
 AstraBuild is a **Universal Autonomous Full-Stack Application Builder** that must independently design, develop, and deploy complete software systems across:
 
