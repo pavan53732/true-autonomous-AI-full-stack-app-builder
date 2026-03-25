@@ -550,6 +550,13 @@ Each task must declare task_type ∈ {build, simulation, code_generation, verifi
 
 Execution rule:
 
+task_type_max_time_ms = lookup(task_type) {
+  build → build_task_max_time_ms
+  simulation → simulation_task_max_time_ms
+  code_generation → code_generation_task_max_time_ms
+  verification → verification_task_max_time_ms
+}
+
 IF task_execution_time_ms > task_type_max_time_ms
 THEN task is terminated and marked as timeout_failure
 
@@ -630,7 +637,7 @@ Regardless of the target framework (.NET, React, Android, Python), the AI agents
 - **Planning systems cannot directly mutate the Project State Graph; all state changes must be executed through validated agent actions and governance enforcement**
 - **All user-provided intents are interpreted, not executed**
 - **Hub-and-Spoke Communication Topology**: Generative AI Agents are strictly prohibited from mutating the file system, triggering compilers, or interacting with the UI directly. All state is mediated by the Orchestrator. Agents are ONLY AUTHORIZED to submit deterministic structural patches to the Orchestrator, which acts as the single choke-point for executing filesystem writes and system builds.
-- **"Safety-First" Implementation Sequence Invariant**: The AstraBuild software development lifecycle mandates that the Orchestrator, State Machine, and Governance Enforcement layers MUST be engineered and sealed *before* any Generative AI logic is integrated. Proceeding out-of-order guarantees uncontrolled AI hallucination and architecture corruption.
+- **"Safety-First" Implementation Sequence Invariant**: The AstraBuild software development lifecycle mandates that the Orchestrator, Project Lifecycle State Machine, and Governance Enforcement layers MUST be engineered and sealed *before* any Generative AI logic is integrated. Proceeding out-of-order guarantees uncontrolled AI hallucination and architecture corruption.
 
 ### 1. Intent & Product Design Engine
 
@@ -3072,7 +3079,7 @@ Rule:
 
 Propagation:
 
-- uncertainty accumulates across planning steps
+- uncertainty propagates across planning steps via logical OR
 - final uncertainty must be 0 for execution eligibility
 
 Only the highest-ranked plan is selected for execution.
