@@ -510,8 +510,9 @@ This ensures that **no parallel authority path** exists outside the invariant. T
 ### Agent System
 
 - logical_agent_roles = 34
-- max_active_agents = 128
-- max_micro_agents = 256
+- max_primary_agent_instances = 128
+- max_micro_agent_instances = 256
+- max_total_concurrent_agents = 384 (Primary + Micro)
 
 ### Task Graph
 
@@ -1858,7 +1859,7 @@ Any event-triggered planning must:
 
 To prevent uncontrolled agent explosion:
 
-- Maximum concurrent micro-agent limits (`max_micro_agents = 256` system-wide)
+- Maximum concurrent micro-agent limits (`max_micro_agent_instances = 256` system-wide)
 - Fixed-policy scaling based on task complexity
 - Hierarchical swarm coordination (leader agents)
 - Automatic consolidation of completed micro-agents
@@ -1867,7 +1868,7 @@ To prevent uncontrolled agent explosion:
 
 1. A specialized agent spawns a micro-agent for a parallelizable atomic sub-task
 2. The micro-agent is registered with the Execution Runtime Control Plane (increments active count)
-3. If `max_micro_agents = 256` are already active, new micro-agents enter a bounded queue
+3. If `max_micro_agent_instances = 256` are already active, new micro-agents enter a bounded queue
 4. On task completion, the micro-agent is deregistered and its resources are released
 5. Parent agent receives result and continues coordination
 
