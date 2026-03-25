@@ -1580,10 +1580,10 @@ Maintains the global mission queue and schedules missions for execution through 
 **Mission-to-Task Priority Link:** The Mission Scheduler assigns `mission_priority_score` to each mission. The Task Graph Engine uses this score to influence `task_priority_score` for tasks within that mission. Specifically, tasks belonging to higher-priority missions receive a base priority boost applied before the task-level formula. The effective priority used for scheduling is:
 
 ```
-effective_task_priority = task_priority_score + floor(mission_priority_score / 2)
+effective_task_priority = min(task_priority_score + floor(mission_priority_score / 2), 15)
 ```
 
-Where `mission_priority_score ∈ {0,1,2,3,4,5,6,7}` and `floor(mission_priority_score / 2)` yields a boost of 0–3. This ensures deterministic, predictable priority ordering. Task scheduling authority remains exclusively with the Task Graph Engine and Global Task Queue.
+Where `mission_priority_score ∈ {0,1,2,3,4,5,6,7}` and `floor(mission_priority_score / 2)` yields a boost of 0–3. This ensures a deterministic, bounded base priority domain of `{0..15}`. Task scheduling authority remains exclusively with the Task Graph Engine and Global Task Queue.
 
 ---
 
@@ -2376,11 +2376,12 @@ Scheduling MAY:
 
 This ensures stable operation when large numbers of agents run simultaneously.
 
-**Scheduling Fairness (Anti-Starvation):** To prevent indefinite starvation of low-priority tasks in the priority-ordered queue, the system MUST enforce a deterministic aging boost:
 ```
-aging_boost = floor(wait_time_ms / 60000)
-effective_priority += aging_boost
+aging_boost = min(floor(wait_time_ms / 60000), 16)
+effective_priority = min(base_priority + aging_boost, 31)
 ```
+
+This enforces a deterministic, bounded final priority domain of `{0..31}`, preventing priority explosion while ensuring long-waiting tasks eventually receive execution windows.
 
 - **Internal Mechanisms**:
   - **Parallelism Engine (Single Active Transaction)**: While AI planning and code generation can occur concurrently across massive worker pools, all filesystem mutation and toolchain invocation is strictly serialized. The Orchestrator processes exactly one `ConstructionTransaction` at a time to mathematically eliminate race conditions and corrupted builds. This serialization means that while 128 workers may be generating code, planning, or analysing simultaneously, all filesystem writes are queued and processed one at a time. This ensures mathematical determinism and prevents corruption, at the cost of throughput on write‑heavy missions.
