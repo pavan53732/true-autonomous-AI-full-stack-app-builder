@@ -51,6 +51,53 @@ Export must be:
 Failure to export locally:
 
 → BUILD_STATUS = FAILURE
+
+## LOCAL GIT EXECUTION LAYER (MANDATORY)
+
+GIT_MODE = LOCAL_ONLY
+REMOTE_GIT_ALLOWED = FALSE
+AUTO_COMMIT_ENABLED = TRUE
+GIT_REQUIRED = TRUE
+
+Every project MUST:
+
+- initialize local git repository
+- maintain commit history
+- use commits as execution checkpoints
+- disallow remote origin
+
+Repository location:
+
+<project_root>\.git
+
+Initialization rule:
+
+IF project_created
+THEN initialize_git_repository = TRUE
+
+Failure:
+
+→ BUILD_STATUS = FAILURE
+
+## COMMIT CONTRACT (DETERMINISTIC)
+
+Each commit MUST include metadata:
+
+commit_metadata = {
+  commit_hash,
+  parent_commit_hash,
+  task_id,
+  mission_id,
+  agent_role,
+  PSG_snapshot_id,
+  validation_status,
+  timestamp_tick
+}
+
+Commit message format:
+
+[MISSION_ID|TASK_ID|AGENT_ROLE]
+<deterministic summary>
 ```
 
 **Hard Rule:**
@@ -230,17 +277,34 @@ PIPELINE = [
   TOOL_LAYER,
   VERIFICATION,
   PRE_COMMIT_GOVERNANCE,
+  GIT_COMMIT,
   PSG_MUTATION,
   LOCAL_EXPORT,
   PSG_UPDATE
 ]
 
+**GIT_COMMIT step:**
+
+- stages working tree changes
+- generates deterministic commit message
+- records commit hash
+- links commit to task_id
+- validates repository integrity
+
 **LOCAL_EXPORT step:**
 
-- packages built application
-- writes to user local filesystem
-- verifies launchability
-- records export path
+- build application
+- commit final build state
+- tag commit as export_commit
+- export to filesystem
+- record export_path
+
+**Deterministic Export Policy:**
+
+export_commit_tag = export_<build_version>
+export_path = default_export_root + project_name + build_version
+export_path_resolution = deterministic
+Export path must be reproducible across replay.
 ```
 
 #### 7.1 Enforcement Rule
@@ -457,6 +521,14 @@ The following are intentionally NOT supported:
 All deployment is strictly:
 
 LOCAL WINDOWS EXPORT ONLY
+
+- Git push
+- Git pull
+- Git fetch
+- Git clone remote repository
+- GitHub repository publishing
+- GitLab publishing
+- Bitbucket publishing
 
 ## Autonomous System Control Plane
 
@@ -738,6 +810,20 @@ These do not violate Zero-Boilerplate rule.
 
 ### Authority Model
 
+FILESYSTEM_WRITE_POLICY:
+
+Direct writes are FORBIDDEN.
+
+All file mutations MUST follow:
+
+AGENT_PROPOSAL
+→ GOVERNANCE
+→ TOOL_EXECUTION
+→ WORKING_TREE_UPDATE
+→ GIT_ADD
+→ GIT_COMMIT
+→ PSG_UPDATE
+
 - **Project State Graph (PSG)** is the single source of truth
 - **Agents operate on PSG, not user-provided intent (normalized from prompts)**
 - **The User-Intent Boundary**: The user exercises **absolute supremacy over the functional outcome** (features, styling, business logic). However, the **raw user prompt is advisory regarding execution mechanics**; it is always interpreted into PSG-aligned structural intents to ensure architectural integrity and safety. Intent is never directly executed as a system command.
@@ -924,6 +1010,17 @@ Any deviation is invalid.
 ### Project State Graph & World Model Layer
 
 The **Project State Graph (PSG)** is the canonical world model of the entire software project. It acts as the authoritative state representation that synchronizes all agents, planning systems, and code intelligence engines.
+
+**PSG_GIT_BINDING = REQUIRED**
+
+Each PSG mutation MUST include:
+
+commit_hash
+
+Constraint:
+
+IF commit_hash missing
+THEN reject PSG mutation
 
 Instead of agents reasoning on partial prompt context, they interact with the shared world model to ensure architectural consistency and prevent reasoning drift.
 
@@ -1112,6 +1209,30 @@ The Task Graph Formal Model participates in the Global Execution Invariant (defi
 All other steps (Governance checkpoints, Simulation, Verification) are defined by the Global Execution Invariant. No separate execution flow exists for this layer.
 
 #### Failure Handling
+
+**ROLLBACK_MECHANISM = GIT_BASED**
+
+rollback_target = last_valid_commit
+
+Rollback procedure:
+
+git reset --hard <commit_hash>
+
+Rollback MUST:
+
+- restore working tree
+- restore PSG alignment
+- invalidate failed commits
+
+**GIT FAILURE CONDITIONS**
+
+FAIL IF:
+
+- git repository missing
+- commit fails
+- commit metadata incomplete
+- PSG not linked to commit
+- remote repository detected
 
 - **Retry Logic**: All retries follow a deterministic fixed‑interval model:
 
@@ -2083,6 +2204,32 @@ Tools MAY ONLY:
 - package executable
 - generate local runtime
 
+**GIT_TOOL_ALLOWED_COMMANDS:**
+
+- git init
+- git add
+- git commit
+- git branch
+- git checkout (local)
+- git reset (local)
+
+**FORBIDDEN:**
+
+- git push
+- git pull
+- git fetch
+- git remote add
+- git clone
+
+**Agent Git Usage Rule:**
+
+Agents:
+
+- cannot directly call git
+- must request commit via execution engine
+- cannot modify commit history
+- cannot rebase
+
 
 #### Model Orchestration Layer
 
@@ -2384,6 +2531,16 @@ Maintains a full trace of:
 - Enables causal tracing across system evolution
 
 **Replay Engine**
+
+**REPLAY_MODE:**
+
+Replay uses:
+
+- commit_hash
+- PSG_snapshot
+- task_id
+
+Execution must reproduce identical state.
 Re-executes past missions step-by-step using recorded snapshots and deterministic seeds to reproduce identical outcomes.
 Replay execution restores PSG state in isolation using snapshot loading and does NOT mutate current live state unless explicitly committed through governance validation.
 
