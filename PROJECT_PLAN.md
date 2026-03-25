@@ -1669,12 +1669,12 @@ Bridges the gap between user-provided intent, visual state, and system execution
   - risk_level ∈ {0,1,2}
   - Rollback availability
 
-**Risk Level Mapping:** `risk_level = floor((1 - confidence_score) * 3)`, producing values 0, 1, or 2.
+**Risk Level Mapping:** `risk_level = min(2, floor((1 - confidence_score) * 3))`, producing values 0, 1, or 2.
 
 Mapping:
 - confidence_score ∈ [0.67, 1.00] → risk_level = 0 (low risk)
-- confidence_score ∈ [0.33, 0.67) → risk_level = 1 (medium risk)
-- confidence_score ∈ [0.00, 0.33) → risk_level = 2 (high risk)
+- confidence_score ∈ (0.33, 0.67) → risk_level = 1 (medium risk)
+- confidence_score ∈ [0.00, 0.33] → risk_level = 2 (high risk)
 
 - **Visual-to-PSG Consistency Enforcement**: Ensures all UI-level modifications are reflected in and validated against the Project State Graph before persistence.
 
