@@ -1484,7 +1484,7 @@ The "Brain" that feeds agents the precise information needed for any given task:
 - **Memory Injector**: Retrieves relevant information from the Memory Layer and integrates it into agent context windows. Bridges project history and previous debugging outcomes into the current agent prompt.
 - **Prompt Compiler**: Assembles final agent prompts by combining context, memory, system rules, governance policies, and task specifications into optimized prompt templates.
 - **Prompt Optimization Engine**: Continuously improves prompt effectiveness through prompt compression, ranking, and context precision optimization. A/B tests prompt variants to identify highest-performing templates.
-- **Interaction Context Bridge**: Receives refined and disambiguated intent from the Interaction Intelligence Layer and transforms it into PSG-aligned contextual inputs for agent execution.
+- **Interaction Context Bridge**: The definitive handover point from the Interaction Intelligence Layer (Human-Intent) to the Context Orchestration Engine (System-Data). It receives refined, disambiguated intent and triggers the hydration of the PSG-aligned contextual state for agent execution.
 
 **Core Optimization Modules (27 modules):**  
 These modules are native to AstraBuild and have been designed to obey the system's governance, cost‑neutrality, and deterministic execution rules. They reside **exclusively** in the Tool Execution Layer or as auxiliary reasoning components; they never bypass the Governance Enforcement Interface.
@@ -1602,7 +1602,10 @@ Ensures zero hallucinated dependencies, APIs, or graph entities enter the system
 
 The Interaction Intelligence Layer:
 
-- transforms raw user input into structured intent
+- transforms raw user input into structured, disambiguated intent
+- maps visual/UI state to semantic project requirements
+
+The Interaction Intelligence Layer does NOT perform context hydration, retrieval, or final prompt compilation; these are exclusive responsibilities of the Context Orchestration Engine.
 
 It CANNOT:
 
