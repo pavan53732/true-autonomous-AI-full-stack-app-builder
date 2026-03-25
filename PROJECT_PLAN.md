@@ -2793,7 +2793,7 @@ New memory entries are created only after successful mission completion via a co
 
    > **Memory Recorder Agent:** The Memory Recorder Agent is NOT a new role. It is an execution specialization of an existing role: `role_id = Agent Orchestrator` with `specialization_type = MEMORY_RECORDER`. It follows the full Agent Proposal → Governance path but is not assigned to any cluster. The Memory Recorder specialization is granted a special **read‑only** tool permission set and a default `AllowedFilePatterns` of `[]` (no files). It is authorised to submit Agent Proposals via the Governance Enforcement Interface; its proposals are always subject to the same validation as any other agent.
 **Memory Write Governance:**
-memory_governance_path = reduced
+governance_class = ATOMIC
 checkpoints = {Pre-Simulation only}
 
 Memory writes are validated only at the Pre‑Simulation governance checkpoint. They bypass the Change Simulation Layer (as they are not code changes) and do not go through Post‑Simulation or Pre‑Commit validation. The `scope_validator`, `hallucination_validator`, and `cost_validator` are applied; `architecture_validator` and `tool_permission_validator` are not required.
@@ -3021,19 +3021,19 @@ No silent failures. All rejections are observable, logged, and traceable.
 
 ### Governance Ordering Guarantee
 
-Governance Enforcement Interface operates at THREE mandatory checkpoints:
+To ensure deterministic safety, the Governance Enforcement Interface categorizes all mutations into two classes:
 
-1. Pre-Simulation (proposal validation)
-2. Post-Simulation (impact validation)
-3. Pre-Commit (final mutation validation)
+| Governance Class | Scope | Required Checkpoints |
+|------------------|-------|----------------------|
+| **FULL** | Code, AST, Filesystem, PSG Core | 1. Pre-Simulation, 2. Post-Simulation, 3. Pre-Commit |
+| **ATOMIC** | Memory Layer, Metadata, Logs | 1. Pre-Simulation (Only) |
 
 No action must:
-
 - execute
-- mutate PSG
+- mutate PSG or Memory
 - call tools
 
-without passing ALL required governance checkpoints.
+without passing ALL required governance checkpoints for its assigned `governance_class`.
 
 #### Governance Modularity Constraint
 
