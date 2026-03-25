@@ -4139,6 +4139,7 @@ Violation of boundary = system failure.
 
 This system includes:
 
+- **Autonomous Internal Environment Provisioning (Self-Bundled SDKs/Runtimes)**
 - multi-agent orchestration
 - PSG-based world modeling
 - multi-world planning
