@@ -523,6 +523,7 @@ This ensures that **no parallel authority path** exists outside the invariant. T
 ### Execution & Mutation Limits
 
 - max_attempts_before_reset = 10 (System Reset Cycle)
+  - **Precedence Rule**: Every failed mission execution (including retries) increments the `global_reset_counter`. System Reset triggers IF `global_reset_counter` >= 10 OR `retry_limit_per_mission` is exhausted for a single mission.
 - max_nodes_modified = 100 (AST Blast Radius)
 - max_affected_symbols = 50 (Inference Blast Radius)
 
@@ -1034,7 +1035,8 @@ idempotent = TRUE
 
   Retries use **fixed‑interval backoff** (no jitter) to guarantee reproducibility. Exponential backoff is **not** used for task execution retries; all retry timings are deterministic and pre‑computed.
 
-- **Mission‑Level Retry Cap**: `retry_limit_per_mission = 3`. A mission officially fails and triggers a re-plan attempt when: `sum(task_failures_after_retry) > 0`. If `retry_limit_per_mission` is exhausted, the mission is permanently aborted, logged, and marked as `aborted`.
+- **Mission‑Level Retry Cap**: `retry_limit_per_mission = 3`. A mission officially fails and triggers a re-plan attempt when: `sum(task_failures_after_retry) > 0`.
+  - **Global Interaction**: Every mission-level retry increments the `global_reset_counter` (see Section 1.1). The `max_attempts_before_reset` acts as a global ceiling; if it is reached, the system resets regardless of individual mission retry status. If `retry_limit_per_mission` is exhausted, the mission is permanently aborted, logged, and marked as `aborted`.
 
 - **Bug‑Classification Retry Budgets** (see Section 6) apply only to the autonomous debugging loop, not to task execution retries.
 - **Fallback Paths**: Alternative execution routes when primary path fails
