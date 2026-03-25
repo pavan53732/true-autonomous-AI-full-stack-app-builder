@@ -413,7 +413,7 @@ Any deviation is invalid.
 
 **Latent Planning Placement:** The Latent Planning & Multi-World Exploration Layer (multi-world plan generation and selection) occurs as part of the Planning Engine, **before Step 1 (Agent Proposal)**. It is not a separate invariant step. Only the selected winning plan proceeds to generate an Agent Proposal.
 
-### 1.5 Project State Graph & World Model Layer
+### Project State Graph & World Model Layer
 
 The **Project State Graph (PSG)** is the canonical world model of the entire software project. It acts as the authoritative state representation that synchronizes all agents, planning systems, and code intelligence engines.
 
@@ -789,7 +789,7 @@ Critical architectural choices (tech stack, database type, service boundaries) a
 - Explicit override actions are interpreted as high-priority intents and must pass governance validation before unlocking decision nodes.
 - All overrides are logged and validated through governance policies before application.
 
-### 1.6 Autonomous Planning Loop (Mission Engine)
+### Autonomous Planning Loop (Mission Engine)
 
 The Autonomous Planning Loop enables AstraBuild to continuously improve projects even when no new user prompts are provided. Instead of stopping after task completion, the system analyzes the Project State Graph to detect improvement opportunities and generates structured missions for autonomous execution.
 
@@ -980,7 +980,7 @@ The system exposes mission-level abstraction:
 
 This provides transparency without exposing internal planning complexity.
 
-### 1.7 Presentation Layer State Machine
+### Presentation Layer State Machine
 
 > **Core Principle: Hide complexity, show only results.**
 > The UI is calm regardless of internal turmoil. Many backend states compress into few user-visible states. The user never sees agent orchestration, graph mutations, retry counters, or build logs by default.
@@ -1164,7 +1164,7 @@ Ensures zero hallucinated dependencies, APIs, or graph entities enter the system
   - **Retrieval Intelligence**: Semantic re-ranking, query rewriting, and hybrid code/doc retrieval fallbacks.
   - **Context Fusion**: Merging system rules, project facts, and memory into a single high-fidelity "reasoning state."
 
-### 2.5 Interaction Intelligence Layer (Human ↔ System Alignment)
+### Interaction Intelligence Layer (Human ↔ System Alignment)
 
 #### Interaction Layer Authority Constraint
 
@@ -2861,7 +2861,7 @@ AstraBuild provides a built‑in UI for configuring cloud AI providers. Users ca
 - The system maintains a capability map for each provider (e.g., supports streaming, embeddings, vision).
 - Fallback ordering and task routing use this capability data, never cost‑based logic.
 
-**No CLI‑Based Providers:** AstraBuild does not support command‑line AI providers; all providers must be cloud‑based with HTTP API endpoints.
+**No CLI‑Based AI Providers:** AstraBuild does not support command‑line AI providers; all AI providers must be cloud‑based or exposed via HTTP API endpoints. This restriction applies ONLY to the AI reasoning engine, not to standard developer CLI tools which the agents are fully authorized to use.
 
 #### Provider Gateway & Fallback
 
@@ -3149,7 +3149,7 @@ graph TD
     %% Feedback loops
     PSG --> Planning
     PSG --> OpDet[Opportunity Detection Engine]
-    OpDet --> Planning
+    OpDet -- "Generates Missions" --> Planning
     Memory --> Planning
     Verification --> DebugLoop[Autonomous Debug Loop]
     DebugLoop --> Planning
