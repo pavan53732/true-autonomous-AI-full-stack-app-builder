@@ -615,7 +615,7 @@ All other steps (Governance checkpoints, Simulation, Verification) are defined b
 
   Retries use **fixed‑interval backoff** (no jitter) to guarantee reproducibility. Exponential backoff is **not** used for task execution retries; all retry timings are deterministic and pre‑computed.
 
-- **Mission‑Level Retry Cap**: `retry_limit_per_mission = 3` is the maximum number of times a mission may be re‑planned or re‑attempted before being permanently aborted. This is independent of the per‑task retry attempts. If a mission is aborted due to exceeding this limit, the failure is logged and the mission is marked as `aborted`.
+- **Mission‑Level Retry Cap**: `retry_limit_per_mission = 3`. A mission officially fails and triggers a re-plan attempt when: `sum(task_failures_after_retry) > 0`. If `retry_limit_per_mission` is exhausted, the mission is permanently aborted, logged, and marked as `aborted`.
 
 - **Bug‑Classification Retry Budgets** (see Section 6) apply only to the autonomous debugging loop, not to task execution retries.
 - **Fallback Paths**: Alternative execution routes when primary path fails
@@ -719,8 +719,7 @@ All mutation attempts outside this path are rejected.
 - Each mission's PSG snapshot is **fixed at mission start** and remains immutable for all tasks within that mission
 - Snapshot version is attached to every task execution
 - PSG writes from tasks within an active mission are **staged** and only committed after all tasks that depend on them complete, preventing intra-mission consistency violations
-- **Staged Write Isolation:** Tasks within the same mission **do not** see each other's staged writes. Each task operates on the original mission snapshot, independent of other tasks' intermediate writes. Staged writes become visible only after the mission commits and the new snapshot is published.
-- **Dependency‑Aware Snapshot Propagation**: If a task has an outgoing `DEPENDS_ON` edge to another task within the same mission, the first task may request that its staged writes be made visible to the dependent task. The system may create a **derived snapshot** (a new immutable view) that includes the changes, which is then used as the base snapshot for the dependent task. This preserves causality while maintaining isolation between non‑dependent tasks.
+- **Causal Visibility Enforced:** A task operates on the mission's base snapshot merged strictly with the staged writes of its direct `DEPENDS_ON` ancestors. It cannot see staged writes from parallel or non-ancestor tasks. Derived snapshots are mandatory, not optional, for dependent edges. This guarantees deterministic causal propagation while maintaining strict isolation between non-dependent tasks.
 - If a task's expected snapshot version conflicts with the current live PSG at commit time, it is **rejected and replanned**
 - **Snapshot Conflict Retry:** If a task is rejected due to snapshot version conflict, the system retries up to 3 times. Each retry uses the latest snapshot. If all retries fail, the mission is aborted and logged.
 
@@ -933,9 +932,8 @@ All generated missions must pass validation through the Governance Enforcement I
 
 Prevents infinite optimization loops and defines system completion boundaries:
 - Defines explicit completion criteria for missions and overall system state
-- Detects diminishing returns in optimization cycles
-- Identifies convergence across architecture, performance, and correctness
-- Terminates or pauses missions when goals are satisfied
+- Establishes a hard mathematical cutoff for diminishing returns: `optimization_convergence_threshold = 3` consecutive no-improvement cycles
+- Identifies convergence across architecture, performance, and correctness to terminate or pause missions when goals are satisfied
 - Prevents unnecessary re-optimization of stable components
 
 Ensures autonomous execution remains purposeful and bounded.
@@ -1579,7 +1577,11 @@ Scheduling MAY:
 
 This ensures stable operation when large numbers of agents run simultaneously.
 
-**Scheduling Fairness:** The priority‑ordered queue may, in theory, allow starvation of low‑priority tasks if high‑priority tasks are continuously injected. Implementers should consider adding a fairness mechanism (e.g., aging of queued tasks or occasional round‑robin scheduling) to prevent indefinite starvation.
+**Scheduling Fairness (Anti-Starvation):** To prevent indefinite starvation of low-priority tasks in the priority-ordered queue, the system MUST enforce a deterministic aging boost:
+```
+aging_boost = floor(wait_time_ms / 60000)
+effective_priority += aging_boost
+```
 
 - **Internal Mechanisms**:
   - **Parallelism Engine (Single Active Transaction)**: While AI planning and code generation can occur concurrently across massive worker pools, all filesystem mutation and toolchain invocation is strictly serialized. The Orchestrator processes exactly one `ConstructionTransaction` at a time to mathematically eliminate race conditions and corrupted builds. This serialization means that while 128 workers may be generating code, planning, or analysing simultaneously, all filesystem writes are queued and processed one at a time. This ensures mathematical determinism and prevents corruption, at the cost of throughput on write‑heavy missions.
