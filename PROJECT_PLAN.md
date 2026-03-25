@@ -474,7 +474,7 @@ AstraBuild incorporates a curated set of **27 autonomous modules** and **18 reas
 ### The Host vs. Runtime Authority Split
 To guarantee absolute system security and prevent AI escape, AstraBuild physically separates operations into two completely isolated processes communicating exclusively via JSON-RPC Named Pipes:
 - **The Runtime (The AI Brain)**: A Node.js/TypeScript background process that handles all LLM communication, AST parsing, and diff generation. It executes with structurally zero authority to write to the physical filesystem or mutate the internal Execution State Store (ESS) database.
-- **The Host (The Sandbox Warden)**: A C#/.NET 8 native desktop shell that acts as the absolute authority. It owns the SQLite ESS databases, Windows permissions, and the physical filesystem. It treats the Node.js Brain as an untrusted entity, enforcing mathematical validation on every JSON-RPC request before allowing the AI to influence the user's host machine.
+- **The Host (The Sandbox Warden)**: A C#/.NET 8 native desktop shell that acts as the absolute authority. **Mandate: The Host is published as a Self-Contained executable (bundling the .NET 8 runtime)** to guarantee zero reliance on globally installed SDKs. It owns the SQLite ESS databases, Windows permissions, and the physical filesystem. It treats the Node.js Brain as an untrusted entity, enforcing mathematical validation on every JSON-RPC request before allowing the AI to influence the user's host machine.
 
 **Execution Binding Rule:**
 
@@ -2099,7 +2099,7 @@ effective_priority += aging_boost
 
 To guarantee reproducibility and prevent environment-specific build failures, the Execution Engine strictly enforces the following toolchain invariants across all compilation targets (Web, Windows, Mobile, Backend):
 
-- **Zero-Host-Dependency Invariant (Bundling Mandate)**: AstraBuild must never rely on globally installed SDKs, runtimes, or compilers (e.g., host Node.js, .NET SDK, Java) on the user's machine. The Execution Engine pulls from its own isolated, bundled toolchain environments before initiating any build task, completely ignoring the host OS `PATH`.
+- **Zero-Host-Dependency Invariant (Bundling Mandate)**: AstraBuild must never rely on globally installed SDKs, runtimes, or compilers (e.g., host Node.js, .NET SDK, Java) on the user's machine. **This applies to AstraBuild itself: the C# Host MUST be a self-contained binary.** The Execution Engine pulls from its own isolated, bundled toolchain environments before initiating any build task, completely ignoring the host OS `PATH`.
 - **Universal Toolchain Integrity & Locking (`toolchain.lock.json`)**: Every workspace requires a locked manifest pinning the exact version and SHA-256 hash of all required compilers and build tools. Before execution, the Toolchain Integrity Validator verifies these compiler hashes to prevent tampering or corruption.
 - **Environment Snapshot Generation (`build_env.json`)**: Before invoking any compiler, the builder captures the exact state of the isolated environment (compiler flags, injected environment variables, and toolchain hashes) into an immutable snapshot. This ensures post-mortem forensic debugging if a build becomes non-deterministic.
 - **Artifact Reproducibility Pipeline**: To mathematically prove determinism, the build pipeline enforces a strict input/output lineage:
