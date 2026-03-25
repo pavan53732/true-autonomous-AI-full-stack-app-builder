@@ -2937,7 +2937,7 @@ During mission execution, AstraBuild can optionally fetch external documentation
   - No user‑specific data is ever sent to external services.
   - The agent may use retrieved information to improve code generation but must never introduce behaviors not specified by the user.
 
-- **Offline Fallback:** If no network connection is available, the agent falls back to its internal knowledge and cached results.
+- **Network Resiliency:** If the network connection is lost, the agent pauses execution and enters a `WAITING_FOR_NETWORK` state. Enhanced features requiring external knowledge are suspended until connectivity is restored.
 
 ### 8. Documentation & Knowledge Transfer
 
@@ -3401,10 +3401,10 @@ AstraBuild uses a provider factory pattern to manage multiple cloud AI providers
 - Fallback is **capability‑aware**: if the current task requires embeddings, the next provider must support embeddings.
 - Fallback events are logged to the Observability Pipeline for audit.
 
-**Offline Queue:**
-- When no provider is reachable, requests are queued to `%TEMP%\\AstraBuild\\offline-queue.json` (JSON Lines format).
-- The queue is persisted across restarts and replayed in priority order when connectivity is restored.
-- Queued requests expire after 24 hours.
+**Transient Network Queue:**
+- When cloud providers are unreachable due to transient network failures, requests are queued to `%TEMP%\\AstraBuild\\transient-queue.json` (JSON Lines format).
+- The system automatically retry/replays the queue upon network restoration.
+- Queued requests expire after 24 hours. No offline reasoning is supported.
 
 **Security:** All provider credentials are stored in the system's secure credential store (e.g., Windows Credential Manager) and never appear in plain text.
 
@@ -3615,11 +3615,12 @@ The preview system is not just a viewer; it is a **Feedback Sensor Network** tha
 - **Database Provisioning**: Self-managed instances of PostgreSQL, MongoDB, and Redis.
 - **Execution Runtime Control Plane**: Manages application processes, runtime containers, sandbox environments, rule-based port allocations, and automatic crash recovery. See primary definition under Autonomous Execution Engine → Execution Runtime Control Plane.
 
-## Self-Contained Operation
+## Resource-Integrated Operation
 
-AstraBuild is designed for "Zero-Dependency" operation. Unlike traditional builders that rely on the user's local machine environment, AstraBuild bundles its entire system:
+AstraBuild is designed for "Self-Sufficient Tooling" while requiring cloud connectivity for AI reasoning:
 
-- **Offline Capable**: Core build, test, and code generation runs without an internet connection (using local LLMs and internal registries). External knowledge features (Global Code Intelligence Network, CVE feeds) operate in degraded-but-functional fallback mode without internet.
+- **Cloud-Linked AI Reasoning**: All code generation, architectural planning, and complex reasoning require an active internet connection to reach authorized cloud AI providers.
+- **Embedded Toolchain**: Core build and test runtimes are bundled within the engine to ensure "Zero-Dependency" local execution of generated code.
 - **Environment Parity**: The build environment is identical across all installations, eliminating "it works on my machine" issues.
 - **Portable Backends**: Generated applications include their own slimmed-down runtimes for easy portability.
 
@@ -3629,7 +3630,7 @@ AstraBuild is designed for "Zero-Dependency" operation. Unlike traditional build
 | :--------------- | :------------------------------------------------- | :--------------------------------------------- |
 | **Tooling**      | Requires manual installation of Node, Python, etc. | All runtimes embedded in the engine.           |
 | **Dependencies** | Fetched from public registries (npm, etc.)         | Resolved via internal mirrors & local caches.  |
-| **Privacy**      | Code often sent to cloud for builds.               | Entire build process is local and sandboxed.   |
+| **Privacy**      | Code often sent to cloud for builds.               | AI reasoning is cloud-based; builds remain local. |
 | **Execution**    | Uses host machine resources directly.              | Isolated in secure security boundaries.        |
 | **Deployment**   | Requires external cloud accounts.                  | Built-in provisioning for local/private cloud. |
 
@@ -3719,8 +3720,8 @@ AstraBuild is designed to maximize execution stability and system throughput:
 
 **System Execution Targets:**
 - Development: Self-contained installation
-- Runtime: Fully offline-capable operation
-- AI Inference: User's choice of local or cloud providers
+- Runtime: Locally-integrated execution with Cloud AI reasoning
+- AI Inference: Cloud-based or HTTP-API-exposed providers only (CLI providers forbidden)
 - Scaling: Resources scale based on system workload and execution demand
 
 ---
@@ -3744,7 +3745,7 @@ Since AstraBuild uses internet-connected AI models for reasoning and code genera
 - **On-Demand Fetching**: AI agents retrieve relevant external patterns during mission execution
 - **Caching Layer**: Frequently accessed patterns stored in Cross-Project Knowledge Graph
 - **Hybrid Knowledge Base**: Combines pre-trained AI knowledge + live internet data + internal project learnings
-- **Offline Fallback**: Core functionality works without internet; enhanced features available when connected
+- **Network-Aware Transition**: Core build/test functionality works locally; AI-driven reasoning requires cloud connectivity.
 
 **Data Sources:**
 - GitHub repository patterns (trending architectures, popular libraries)
