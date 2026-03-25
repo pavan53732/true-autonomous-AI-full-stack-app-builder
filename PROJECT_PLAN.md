@@ -550,6 +550,8 @@ Each task must declare task_type ∈ {build, simulation, code_generation, verifi
 
 Execution rule:
 
+task_execution_time_source = deterministic_monotonic_clock
+
 task_type_max_time_ms = lookup(task_type) {
   build → build_task_max_time_ms
   simulation → simulation_task_max_time_ms
@@ -558,7 +560,16 @@ task_type_max_time_ms = lookup(task_type) {
 }
 
 IF task_execution_time_ms > task_type_max_time_ms
-THEN task is terminated and marked as timeout_failure
+THEN
+  terminate_task = TRUE
+  mark_status = timeout_failure
+  emit timeout_event
+
+Determinism Constraint:
+
+- Time measurement MUST use deterministic_monotonic_clock
+- Wall-clock time is forbidden
+- Replay must reproduce identical timeout decisions
 
 ### Simulation Constraints
 
@@ -619,7 +630,19 @@ Prevents divergence between platform implementations.
 
 Regardless of the target framework (.NET, React, Android, Python), the AI agents MUST adhere to these meta-programming invariants to ensure the code remains pure and undisturbed:
 
-1. **The Pure Code Generation Mandate (Zero-Boilerplate)**: AstraBuild is strictly forbidden from forcing artificial folder structures, "Minimal Kernels," or opinionated multi-layer architectures (like forced Tri-Layer domains) onto the user's application. The system must natively generate the exact files required for the application to function, starting from absolute scratch, ensuring 100% purity of the user's intended design.
+1. **The Pure Application Code Generation Mandate (Zero-Boilerplate)**: AstraBuild is strictly forbidden from forcing artificial folder structures, "Minimal Kernels," or opinionated multi-layer architectures (like forced Tri-Layer domains) onto the user's application. The system must natively generate the exact files required for the application to function, starting from absolute scratch, ensuring 100% purity of the user's intended design.
+
+Scope Clarification:
+
+Zero-Boilerplate applies ONLY to application code.
+
+Infrastructure files required for deterministic builds ARE mandatory:
+- package-lock.json
+- toolchain.lock.json
+- build_env.json
+- dependency manifests
+
+These do not violate Zero-Boilerplate rule.
 2. **Universal Package Lock Enforcement**: To ensure hermetic reproducibility, AstraBuild enforces strict package locking across all ecosystems (e.g., executing `npm ci` instead of `npm install`). If a package lockfile (e.g., `package-lock.json`, `packages.lock.json`) is absent or stale, the build fails immediately, forcing a dedicated Dependency Agent to formally regenerate it.
 
 ### Authority Model
@@ -986,6 +1009,18 @@ All other steps (Governance checkpoints, Simulation, Verification) are defined b
 #### Failure Handling
 
 - **Retry Logic**: All retries follow a deterministic fixed‑interval model:
+
+**Retry Safety Contract**
+
+Each task must declare:
+
+idempotent = TRUE | FALSE
+side_effect_class = {none, filesystem, network, external}
+
+Constraint:
+
+Retries allowed ONLY if:
+idempotent = TRUE
 
   ```
   retry_interval_ms = 30000   (30 seconds)
@@ -1396,6 +1431,21 @@ This provides transparency without exposing internal planning complexity.
 
 > **No FATAL state exists in the UI.** The presentation layer has no failed/crashed visual state. The system retries until it succeeds or the user explicitly cancels. This is a design invariant, not an implementation detail.
 
+Internal Failure Mapping Rule:
+
+Internal system may enter:
+
+internal_state = FAILURE
+
+UI mapping:
+
+internal_state = FAILURE
+→ UI state = SELF_HEALING
+
+Only user cancellation transitions to:
+
+UI state = SYSTEM_IDLE
+
 #### UI Authority Constraint
 
 UI state transitions are **read‑only projections** of the underlying system state. The UI MUST NOT:
@@ -1657,6 +1707,17 @@ AstraBuild coordinates a team of specialized AI agents under a strict governance
 
 - **Internal Mechanisms**:
   - **Global Event & Messaging Bus (implemented via Control Plane Event Router)**: Inter-agent message brokering, event broadcasting, reliable message ordering, and distributed event consistency across all subsystems.
+
+    **Event Delivery Semantics**
+
+    delivery_mode = exactly_once
+    ordering = deterministic
+    deduplication = required
+
+    Each event includes:
+
+    event_hash
+    sequence_number
 - Event messages cannot trigger execution directly.
 
 Event-to-Execution Constraint:
@@ -1690,6 +1751,27 @@ Event
 No direct or implicit execution paths allowed from events.
 
 Event Planning Constraint:
+
+Event Loop Prevention Rule:
+
+Each event must include:
+
+event_id
+event_origin
+causality_chain_id
+
+Constraint:
+
+IF event_origin = planning_engine
+AND causality_chain_id already contains planning_engine
+THEN planning_engine MUST NOT trigger new planning
+
+This prevents recursive planning loops.
+
+Event Planning Rate Limits:
+
+event_planning_rate_limit_per_minute = 5
+event_planning_debounce_ms = 500
 
 Events MAY trigger Planning Engine.
 
@@ -1725,9 +1807,35 @@ Any event-triggered planning must:
 - **Capability Self‑Discovery Loop:**  
   The system continuously analyses agent performance data to identify gaps and opportunities for new specialised roles.  
   - **Capability Clustering:** Using the Capability Benchmark Engine, the system clusters agent performance metrics (success rates, latency, quality) to discover natural groupings of capabilities.  
-  - **Automatic New Role Creation:** When a cluster of capabilities is found that is not currently represented by an existing logical role, the Agent Evolution Engine may propose the creation of a new role. This proposal follows the same governance path (Agent Proposal → Governance → PSG Mutation Gateway) to add the role definition to the PSG.  
-  - **Skill Library Expansion:** Newly created roles are added to the Agent Skill Library, and their initial skill modules are derived from the aggregated patterns of existing agents that exhibited the capabilities.  
-  - **Human Oversight:** Role creation proposals are logged and can be reviewed; by default they are auto‑approved unless governance policies require manual intervention.  
+  - **Logical Role Set Immutability:**  
+    logical_agent_roles = 34 is immutable. No new logical roles may be created at runtime.
+  - **Specialization-Based Evolution:**  
+    The Agent Evolution Engine may create specialization profiles within existing logical roles:
+    
+    specialization_profile:
+      role_id (must map to existing logical role)
+      specialization_id (UUID)
+      capability_vector
+      performance_metrics
+
+  - **Execution Instance Expansion:**  
+    Runtime agent instances may dynamically scale using specialization profiles without modifying the logical role set.
+  - **Skill Library Expansion:**  
+    New specialization profiles are stored in the Agent Skill Library and mapped to existing logical roles.
+  - **Governance Constraint:**  
+    Any attempt to create a new logical role MUST be rejected by Governance Enforcement Interface.
+
+  **Agent Evolution Constraint**
+
+  Allowed:
+  - specialization creation
+  - skill updates
+  - performance tuning
+
+  Forbidden:
+  - logical role creation
+  - role deletion
+  - role hierarchy modification
 
   This loop ensures that the agent ecosystem evolves organically to match the complexity of the projects it builds.
 
@@ -2094,6 +2202,21 @@ These results are exposed as a simplified “Impact Preview” before execution.
 ### 5.3 Deterministic Execution & Replay System
 
 To ensure full system reliability, debuggability, and reproducibility, AstraBuild enforces deterministic execution across all autonomous operations.
+
+**Deterministic Time Model**
+
+All time-based logic must use:
+
+logical_time_tick (integer)
+monotonic_counter (deterministic)
+
+Forbidden:
+- system clock
+- wall clock
+- real-time timestamps for decisions
+
+Allowed:
+- logical_time_tick increments per execution step
 
 #### Core Responsibilities
 - Enable exact replay of any past execution
