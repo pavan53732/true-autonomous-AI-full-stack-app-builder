@@ -3167,6 +3167,7 @@ AstraBuild maintains a layered memory architecture that mimics human cognitive s
 | Memory Type | Scope | Persistence | Purpose |
 |-------------|-------|-------------|---------|
 | **Short-Term Reasoning Memory** | Active mission, current task | Ephemeral (mission scope) | Stores reasoning steps, intermediate conclusions, and decision context for the current task. Used by the Formal Reasoning Loop and Self-Critique Engine. |
+| **Strategic Roadmap Memory** | Strategic initiatives | Persistent (Project) | Records project-specific roadmaps, dependencies, and mission outcomes. Stored in the **Roadmap Memory Graph** (Memory Layer). |
 | **Episodic Execution Memory** | Mission execution history | Persistent (project scope) | Records sequences of actions, their outcomes, and the context in which they were taken. Enables replay, debugging, and learning from past successes/failures. Stored in the Execution Graph and referenced by the Meta-Learning Engine. |
 | **Semantic Architecture Memory** | Global project knowledge | Persistent (project scope) | Stores abstract architectural patterns, component relationships, and design decisions. This is the authoritative content of the Project State Graph (PSG). |
 | **Procedural Skill Memory** | Agent capabilities | Persistent (cross-project) | Encodes reusable skills, patterns, and agent behaviours learned across projects. Stored in the Agent Skill Library and Cross-Project Knowledge Graph. |
@@ -3181,13 +3182,12 @@ These tiers are managed by the Memory Layer Gateway, with read access via the Me
 
 #### Cross-Project Knowledge Graph
 
-AstraBuild maintains a cross-project knowledge graph containing reusable architecture patterns, bug-resolution strategies, dependency compatibility data, and performance optimization knowledge. This enables the system to transfer learning across projects and accelerate future development cycles.
+The Cross-Project Knowledge Graph is a global, shared repository that stores:
+- **Meta-Strategy Patterns**: Abstracted lessons derived from the Roadmap Memory Graph of all projects.
+- **Agent Skill Schemes**: Standardized tool usage patterns and reasoning structures.
+- **Framework Best Practices**: Optimized code patterns for supported stacks.
 
-**Structure and Integration:**
-- **Pattern Library**: Reusable architecture templates, security patterns, and performance optimization strategies
-- **Bug Resolution Database**: Historical debugging traces linked to successful fixes
-- **Dependency Compatibility Matrix**: Version compatibility data and supply chain risk scores
-- **Query Interface**: Semantic search over cross-project learnings via vector embeddings
+It provides pattern validation and context-free retrieval but NEVER stores project-specific roadmap instances. It is a read-only resource for most agents and is updated only when a project reaches a major milestone (e.g., successful local export).
 - **Update Mechanism**: Automatically ingests successful patterns from completed missions
 - **Agent Skill Repository**: Stores evolved agent capabilities discovered through execution analysis
 - **Global Intelligence Graph**: A unified graph across:
